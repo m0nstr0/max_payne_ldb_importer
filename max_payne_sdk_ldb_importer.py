@@ -1,7 +1,9 @@
+from cProfile import label
 import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import sys
 import os
+import math
 import max_payne_sdk.max_ldb as max_ldb 
 import maya.cmds as mc
 from pathlib import Path
@@ -52,7 +54,7 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
         return file_name
 
     def dumpTextureData(self, out_directory, texture):
-        file_name = Path(texture.name).stem
+        file_name = Path(texture.file_path).stem
         ext = "." + texture.getFileTypeName()
         o_file_name = self.genUniqFileName(out_directory, file_name, ext)
         o_file_path = os.path.join(out_directory, o_file_name + ext)
@@ -83,42 +85,38 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
             raise
 
     def processTextures(self, out_directory, ldb):
-        amount = 20.0
-        percent = 20.0 / (ldb.textures.numTextures() + ldb.textures.numLightmaps())
         MSG = "Importing: Processing textures"
-
-        for texture in ldb.textures.textures:
-            if not self.updateProgressBar(int(amount), MSG):
+        for texture in ldb.getTextures().textures:
+            if not self.updateProgressBar(MSG):
                 break
-            amount = amount + percent
             file_path = self.dumpTextureData(out_directory, texture)
-            self.textures.append(file_path)
+            self.textures[texture.file_path] = file_path
 
-        for texture in ldb.textures.lightmaps:
-            if not self.updateProgressBar(int(amount), MSG):
+        for texture in ldb.getLightMaps().textures:
+            if not self.updateProgressBar(MSG):
                 break
-            amount = amount + percent
-            self.dumpTextureData(out_directory, texture)
+            #self.dumpTextureData(out_directory, texture)
 
     def endProgressBar(self):
         mc.progressWindow(endProgress=1)
 
-    def updateProgressBar(self, amount, message):
+    def updateProgressBar(self, message):
+        self.progress_amount = self.progress_amount + self.progress_delta
         window_title = "Importing MaxPayne Level"
         if mc.progressWindow( query=True, isCancelled=True ):
             self.endProgressBar()
             mc.confirmDialog(message="File import was canceled")
             return False
-        if amount == 0:
+        if self.progress_amount == 0:
             mc.progressWindow(title=window_title,
-					progress=amount,
+					progress=0,
 					status=message,
 					isInterruptable=True)
             return True
-        if amount >= 100:
+        if self.progress_amount >= 100:
             self.endProgressBar()
             return True       
-        mc.progressWindow(edit=True, progress=amount, status=message)
+        mc.progressWindow(edit=True, progress=self.progress_amount, status=message)
         return True
 
     def createMaterialNode(self, material_name, diffuse_file_path, alpha_file_path):
@@ -140,106 +138,171 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
         return shader
 
     def processMaterials(self, ldb):
-        amount = 40.0
-        percent = 20.0 / ldb.materials.numMaterials()
-        MSG = "Importing: Processing materials"
-
-        self.materials.append([
-            -1, 
-            self.createMaterialNode("max_payne_mat_none", "", "")
-        ])
-
-        for material in ldb.materials.materials:
-            if not self.updateProgressBar(int(amount), MSG):
+        self.empty_material = self.createMaterialNode("max_payne_mat_none", "", "")
+        for material in ldb.getMaterials().materials:
+            if not self.updateProgressBar("Importing: Processing materials"):
                 break
-            amount = amount + percent
 
             material_name = "max_payne_mat_%i" % material.id          
             diffuse_texture = ""
             if material.diffuse_texture != None:
-                diffuse_texture = self.textures[material.diffuse_texture.id]
+                diffuse_texture = self.textures[material.diffuse_texture.file_path]
             
             alpha_texture = ""
             if material.alpha_texture != None:
-                alpha_texture = self.textures[material.alpha_texture.id]
+                alpha_texture = self.textures[material.alpha_texture.file_path]
             
             self.materials.append([
                 material.id, 
                 self.createMaterialNode(material_name, diffuse_texture, alpha_texture)
             ])
 
-    def processGeometry(self, ldb):
-        amount = 60.0
-        num_polygons = 0
-
-        for room in ldb.rooms.rooms:
-            num_polygons = num_polygons + len(room.polygons)
-        
-        percent = 40.0 / num_polygons
-        MSG = "Importing: Processing geometry"
-
-        for room in ldb.rooms.rooms:
-            if not self.updateProgressBar(int(amount), MSG):
+    def createPolygons(self, mesh):
+        group_up = OpenMaya.MSelectionList() 
+        for polygon_idx in range(mesh.numPolygons()):
+            if not self.updateProgressBar("Importing: Processing geometry"):
                 break
-            objects_to_group = OpenMaya.MSelectionList()
-            per_object_selection = OpenMaya.MSelectionList()
-            for polygon in room.polygons:
-                if not self.updateProgressBar(int(amount), MSG):
+            selection = OpenMaya.MSelectionList()
+            geometry = mesh.constructPolygon(polygon_idx)
+            num_points = len(geometry.vertices)
+            vertices = map(lambda vertex: OpenMaya.MFloatPoint(-vertex.x * 100.0, vertex.y * 100.0, vertex.z * 100.0), geometry.vertices)
+            normals = map(lambda normal: OpenMaya.MVector(-normal.x, normal.y, normal.z), geometry.normals)
+            us = list(map(lambda uv: uv.u, geometry.uv))
+            vs = list(map(lambda uv: 1.0 - uv.v, geometry.uv))
+            indices = list(range(num_points))
+            new_mesh = OpenMaya.MFnMesh()
+            new_mesh.create(vertices, [num_points], indices, us, vs)
+            new_mesh.setVertexNormals(normals, indices)
+            new_mesh.assignUVs([num_points], indices)
+            selection.add(new_mesh.getPath())
+            group_up.add(new_mesh.getPath())
+            OpenMaya.MGlobal.setActiveSelectionList(selection)
+            found = False
+            for material in self.materials:
+                if geometry.material != None and geometry.material.id == material[0]:
+                    mc.hyperShade(assign=material[1])
+                    found = True
                     break
-                amount = amount + percent
-        
-                indices = list(range(polygon.num_vertices))
-                u = []
-                v = []
+            if not found:
+                mc.hyperShade(assign=self.empty_material)
+            new_mesh.updateSurface()
+        return group_up
 
-                for uv in polygon.getGeometry().uvs:
-                    u.append(uv[0])
-                    v.append(1.0 - uv[1])
-                
-                new_mesh = OpenMaya.MFnMesh()
-                new_mesh.create(map(lambda x: OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0), polygon.getGeometry().vertices), [polygon.num_vertices], indices, u, v)
-                new_mesh.setVertexNormals(map(lambda x: OpenMaya.MVector(-x[0], x[1], x[2]), polygon.getGeometry().normals), indices)  
-                new_mesh.assignUVs([polygon.num_vertices], indices)
+    def groupAndTransform(self, group_up, transfrom):
+        matrix = OpenMaya.MMatrix([
+            transfrom[0] + [0.0], 
+            transfrom[1] + [0.0], 
+            transfrom[2] + [0.0], 
+            transfrom[3] + [1.0]
+        ])
+        OpenMaya.MGlobal.setActiveSelectionList(group_up)
+        group = mc.group()
+        mc.move(0, 0, 0, group + ".scalePivot", group + ".rotatePivot")
+        mm_transform = OpenMaya.MTransformationMatrix(matrix)
+        translation = mm_transform.translation(OpenMaya.MSpace.kWorld)
+        rotation = mm_transform.rotation(asQuaternion=False)
+        scale = mm_transform.scale(OpenMaya.MSpace.kWorld)
+        mc.rotate(rotation[0] * (180/math.pi), -rotation[1] * (180/math.pi), -rotation[2] * (180/math.pi), group, absolute=True)
+        mc.move(-translation[0] * 100.0, translation[1] * 100.0, translation[2] * 100.0, group, absolute=True)
+        mc.scale(scale[0], scale[1], scale[2], group, absolute=True)
+        return group
 
-                #apply material
-                per_object_selection.clear()
-                per_object_selection.add(new_mesh.getPath())
-                OpenMaya.MGlobal.setActiveSelectionList(per_object_selection)
-                found = False
-                for material in self.materials:
-                    if polygon.material.id == material[0]:
-                        mc.hyperShade(assign=material[1])
-                        found = True
-                        break
-                if not found:
-                    mc.hyperShade(assign=material[0][0])
-                objects_to_group.add(new_mesh.getPath())
-            OpenMaya.MGlobal.setActiveSelectionList(objects_to_group)
-            group = mc.group()
-            mm = OpenMaya.MMatrix([
-                room.transform[0] + [0.0], 
-                room.transform[1] + [0.0], 
-                room.transform[2] + [0.0], 
-                room.transform[3] + [1.0]
-            ])
-            mm_transform = OpenMaya.MTransformationMatrix(mm)
-            translation = mm_transform.translation(OpenMaya.MSpace.kWorld)
-            rotation = mm_transform.rotation(asQuaternion=False)
-            scale = mm_transform.scale(OpenMaya.MSpace.kWorld)
-            mc.rotate(rotation[0], rotation[1], rotation[2], group, absolute=True)
-            mc.move(-translation[0] * 100.0, translation[1] * 100.0, translation[2] * 100.0, group, absolute=True)
-            mc.scale(scale[0], scale[1], scale[2], group, absolute=True)
+    def invRotationMatrix(self, in_m):
+        m = [x[:] for x in in_m]
+        det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+        if det == 0:
+            return m
+        invdet = 1.0 / det
+        m[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet
+        m[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet
+        m[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet
+        m[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet
+        m[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet
+        m[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet
+        m[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet
+        m[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet
+        m[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet
+        return m
 
-    def processFile(self, directory_for_texures, file_path):
-        ldb = max_ldb.MaxLDB(file_path)
+    def transformNodeWithParent(self, parent, child):
+        result = [x[:] for x in child]
+        #result = self.invRotationMatrix(result)
+        for i in range(3):
+            for j in range(3):
+                sum = 0
+                for k in range(3):
+                    sum = sum + parent[i][k] * child[k][j]
+                result[i][j] = sum
+        result[3][0] = parent[3][0] + child[3][0]
+        result[3][1] = parent[3][1] + child[3][1]
+        result[3][2] = parent[3][2] + child[3][2]
+        return result
+
+    def buildTransformTree(self, ldb):
+        room_transfoms = {}
+        transform_tree = {}
+        for room in ldb.getRooms().rooms:
+            for static_mesh_id in room.static_meshes:
+                static_mesh = ldb.getStaticMeshes().getById(static_mesh_id)
+                room_transfoms[room.id] = static_mesh.transform
+            for dynamic_mesh_name in room.dynamic_meshes:
+                dynamic_mesh = ldb.getDynamicMeshes().getBySharedName(dynamic_mesh_name)
+
+                transforms = [[x[:] for x in dynamic_mesh.transform]]
+                parent_mesh = dynamic_mesh
+                while (parent_mesh.properties.parent_dynamic_mesh_name != ""):
+                    parent_mesh = ldb.getDynamicMeshes().getBySharedName(parent_mesh.properties.parent_dynamic_mesh_name)
+                    transforms.append([x[:] for x in parent_mesh.transform])
+
+                transform = [x[:] for x in room_transfoms[room.id]]
+                for i in range(len(transforms) - 1, -1, -1):
+                    transform = self.transformNodeWithParent(transform, transforms[i])
+                transform_tree[dynamic_mesh.shared_name] = [x[:] for x in transform]
+        return transform_tree
+
+    def processGeometry(self, ldb):
+        MSG = "Importing: Processing geometry"
+        transform_tree = self.buildTransformTree(ldb)
+        for room in ldb.getRooms().rooms:
+            if not self.updateProgressBar(MSG):
+                break
+            for static_mesh_id in room.static_meshes:
+                if not self.updateProgressBar(MSG):
+                    break
+                static_mesh = ldb.getStaticMeshes().getById(static_mesh_id)
+                self.groupAndTransform(self.createPolygons(static_mesh), static_mesh.transform)
+            for dynamic_mesh_name in room.dynamic_meshes:
+                if not self.updateProgressBar(MSG):
+                    break
+                dynamic_mesh = ldb.getDynamicMeshes().getBySharedName(dynamic_mesh_name)
+                transform = transform_tree[dynamic_mesh_name]
+                self.groupAndTransform(self.createPolygons(dynamic_mesh), transform)
+
+    def processFile(self, directory_for_texures, ldb):
         self.processTextures(directory_for_texures, ldb)
         self.processMaterials(ldb)
         self.processGeometry(ldb)
 
+    def calculateItems(self, ldb):
+        num_textures = len(ldb.getTextures().textures)
+        num_lightmap_textures = len(ldb.getLightMaps().textures)
+        num_materials = len(ldb.getMaterials().materials)
+        num_static_mesh_polygons = 0
+        num_rooms = len(ldb.getRooms().rooms)
+        for static_mesh in ldb.getStaticMeshes().static_meshes:
+            num_static_mesh_polygons = num_static_mesh_polygons + len(static_mesh.polygons.polygons)
+        num_dynamic_mesh_polygons = 0
+        for dynamic_mesh in ldb.getDynamicMeshes().dynamic_meshes:
+            num_dynamic_mesh_polygons = num_dynamic_mesh_polygons + len(dynamic_mesh.polygons.polygons)
+        return num_materials + num_textures + num_lightmap_textures + num_static_mesh_polygons + num_dynamic_mesh_polygons + num_rooms
+
     def reader(self, file, options, mode):
-        self.textures = []
+        self.textures = {}
         self.materials = []
-        
+        self.empty_material = None
+        self.progress_amount = 0
+        self.progress_delta = 0
+
         directory_for_texures = self.specifyDirectoryForTextures()
 
         if directory_for_texures == "":
@@ -247,8 +310,11 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
             return
         
         try:
-            self.updateProgressBar(0, "Importing: Reading File")
-            self.processFile(directory_for_texures, file.expandedFullName())
+            self.updateProgressBar("Importing: Reading File")
+            ldb = max_ldb.MaxLDBReader().parse(file.expandedFullName())
+            num_items = self.calculateItems(ldb)
+            self.progress_delta = 100.0 / num_items
+            self.processFile(directory_for_texures, ldb)
         except Exception:
             sys.stderr.write("Failed to import file: %s" % file.expandedFullName())
             mc.confirmDialog(message="Failed to import file: %s" % file.expandedFullName())

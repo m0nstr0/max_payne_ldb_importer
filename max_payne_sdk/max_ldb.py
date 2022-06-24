@@ -1,393 +1,595 @@
+from __future__ import annotations
 from max_payne_sdk.max_type import parseType
+from max_payne_sdk.max_ldb_type import Vertex
+from max_payne_sdk.max_ldb_type import VertexContainer
+from max_payne_sdk.max_ldb_type import BSPVertex
+from max_payne_sdk.max_ldb_type import BSPPolygon
+from max_payne_sdk.max_ldb_type import BSPNode
+from max_payne_sdk.max_ldb_type import BSPPolygonIndex
+from max_payne_sdk.max_ldb_type import Texture
+from max_payne_sdk.max_ldb_type import LightMapTexture
+from max_payne_sdk.max_ldb_type import Material   
+from max_payne_sdk.max_ldb_type import Exit
+from max_payne_sdk.max_ldb_type import VertexUV
+from max_payne_sdk.max_ldb_type import TextureVertex
+from max_payne_sdk.max_ldb_type import Polygon
+from max_payne_sdk.max_ldb_type import PolygonContainer
+from max_payne_sdk.max_ldb_type import StaticMesh  
+from max_payne_sdk.max_ldb_type import EntityProperties
+from max_payne_sdk.max_ldb_type import DynamicLight
+from max_payne_sdk.max_ldb_type import Waypoint
+from max_payne_sdk.max_ldb_type import FSMMessageContainer
+from max_payne_sdk.max_ldb_type import FSMStateSpecificMessage
+from max_payne_sdk.max_ldb_type import FSMStateSpecificMessageContainer
+from max_payne_sdk.max_ldb_type import FSMEvent
+from max_payne_sdk.max_ldb_type import FSMEventContainer
+from max_payne_sdk.max_ldb_type import FSMStateContainer
+from max_payne_sdk.max_ldb_type import FSM 
+from max_payne_sdk.max_ldb_type import Character
+from max_payne_sdk.max_ldb_type import Trigger
+from max_payne_sdk.max_ldb_type import Graph
+from max_payne_sdk.max_ldb_type import Animation
+from max_payne_sdk.max_ldb_type import AnimationContainer
+from max_payne_sdk.max_ldb_type import DynamicMeshConfig
+from max_payne_sdk.max_ldb_type import DynamicMesh
+from max_payne_sdk.max_ldb_type import Item
+from max_payne_sdk.max_ldb_type import PointLight
+from max_payne_sdk.max_ldb_type import Room
+from max_payne_sdk.max_ldb_type import MaxLDB
 
-class Texture:
-    def __init__(self, id, name, file_type, file_size, data):
-        self.name = name
-        self.file_type = file_type
-        self.file_size = file_size
-        self.data = data
-        self.id = id
-    
-    def getFileTypeName(self):
-        if self.file_type == 0:
-            return "tga" 
-        if self.file_type == 2:
-            return "scx" 
-        if self.file_type == 3:
-            return "pcx"  
-        if self.file_type == 4:
-            return "jpg"
-        if self.file_type == 5:
-            return "dds" 
-        raise Exception("Unknown texture file type %i" % self.file_type)
-
-class TextureContainer:
-    def __init__(self):
-        self.textures = []
-        self.lightmaps = []
-    
-    def addTexture(self, name, file_type, file_size, data):
-        self.textures.append(Texture(len(self.textures), name, file_type, file_size, data))
-
-    def numTextures(self):
-        return len(self.textures)
-
-    def getTextureById(self, id):
-        if id < 0 or id >= self.numTextures():
-            raise Exception("Texture not found with index %i" % id)
-        return self.textures[id]
-
-    def getTextureByName(self, name):
-        for texture in self.textures:
-            if texture.name == name:
-                return texture
-        raise Exception("Texture not found with name %s" % name)
-
-    def numLightmaps(self):
-        return len(self.lightmaps)
-
-    def addLightMap(self, id, file_type, file_size, data):
-        self.lightmaps.append(Texture(id, "lightmap_" + str(id), file_type, file_size, data))
-   
-    def getLightMapById(self, id):
-        for lightmap in self.lightmaps:
-            if lightmap.id == id:
-                return lightmap
-        raise Exception("Lightmap not found with id %i" % id)
-
-class Material:
-    def __init__(self, id, category_name, material_name, diffuse_texture, alpha_texture, has_alpha_test, has_adult_content):
-        self.id = id
-        self.category_name = category_name
-        self.material_name = material_name
-        self.diffuse_texture = diffuse_texture
-        self.alpha_texture = alpha_texture
-        self.has_alpha_test = has_alpha_test
-        self.has_adult_content = has_adult_content
-
-class MaterialContainer:
-    def __init__(self):
-        self.materials = []
-    
-    def addMaterial(self, id, category_name, material_name, diffuse_texture, alpha_texture, has_alpha_test, has_adult_content):
-        self.materials.append(Material(id, category_name, material_name, diffuse_texture, alpha_texture, has_alpha_test, has_adult_content))
-
-    def numMaterials(self):
-        return len(self.materials)
-
-    def getMaterialById(self, id):
-        for material in self.materials:
-            if id == material.id:
-                return material
-        raise Exception("Material not found with index %i" % id)
-
-    def getMaterialByName(self, category_name, material_name):
-        for material in self.materials:
-            if material.material_name == material_name and material.category_name == category_name:
-                return material
-        raise Exception("Material not found with category %s and name %s" % (category_name, material_name))
-
-class TextureVertex:
-    def __init__(self, vertex_idx, uv, lightmap_uv, is_hidden):
-        self.vertex_idx = vertex_idx
-        self.uv = uv
-        self.lightmap_uv = lightmap_uv
-        self.is_hidden = is_hidden
-
-class TexureVertexContainer:
-    def __init__(self):
-        self.vertices = []
-        pass
-
-    def addTextureVertex(self, vertex_idx, uv, lightmap_uv, is_hidden):
-        self.vertices.append(TextureVertex(vertex_idx, uv, lightmap_uv, is_hidden))
-
-    def numVertices(self):
-        return len(self.vertices)
-
-    def getVertexById(self, id):
-        if id < 0 or id >= self.numVertices():
-            raise Exception("Texture Vertex not found with index %i" % id)
-        return self.vertices[id]
-
-class VerticesContainer:
-    def __init__(self):
-        self.vertices = []
-    
-    def addVertex(self, vertex):
-        self.vertices.append(vertex)
-
-    def numVertices(self):
-        return len(self.vertices)
-
-    def getVertexById(self, id):
-        if id < 0 or id >= self.numVertices():
-            raise Exception("Vertex not found with index %i" % id)
-        return self.vertices[id]
-
-class Geometry:
-    def __init__(self):
-        self.vertices = []
-        self.normals = []
-        self.uvs = []
-        self.lightmap_uvs = []
-
-    def addPoint(self, vertex, normal, uv, lightmap_uv):
-        self.vertices.append(vertex)
-        self.normals.append(normal)
-        self.uvs.append(uv)
-        self.lightmap_uvs.append(lightmap_uv)
-
-    def addMaterial(self, material):
-        self.material = material
-
-    def addLightMapTexture(self, lightmap):
-        self.lightmap = lightmap
-
-class Polygon:
-    def __init__(self, texture_vertex_idx, num_vertices, material, lightmap):
-        self.text_vertex_idx = texture_vertex_idx
-        self.num_vertices = num_vertices
-        self.material = material
-        self.lightmap = lightmap
-        self.geometry = Geometry()
-
-    def build(self, vertices, normals, texture_vertices):
-        for i in range(self.num_vertices):
-            texture_vertex = texture_vertices.getVertexById(self.text_vertex_idx + i)
-            self.geometry.addPoint(
-                vertices.getVertexById(texture_vertex.vertex_idx),           
-                normals.getVertexById(texture_vertex.vertex_idx),
-                texture_vertex.uv,
-                texture_vertex.lightmap_uv)
-        self.geometry.addMaterial(self.material)
-        self.geometry.addLightMapTexture(self.lightmap)
-
-    def getGeometry(self):
-        return self.geometry
-
-class Room:
-    def __init__(self, texture_vertices):
-        self.vertices = VerticesContainer()
-        self.normals = VerticesContainer()
-        self.transform = None
-        self.polygons = []
-        self.texture_vertices = texture_vertices
-
-    def addVertex(self, vertex):
-        self.vertices.addVertex(vertex)
-
-    def addNormal(self, normal):
-        self.normals.addVertex(normal)
-
-    def addTransform(self, transform):
-        self.transform = transform
-
-    def addPolygon(self, polygon):
-        polygon.build(self.vertices, self.normals, self.texture_vertices)
-        self.polygons.append(polygon)
-
-    def numPolygons(self):
-        return len(self.polygons)
-
-    def getPolygonById(self, id):
-        if id < 0 or id >= self.numPolygons():
-            raise Exception("Polygon not found with index %i" % id)
-        return self.polygons[id]
-
-class RoomCointainer:
-    def __init__(self):
-        self.rooms = []
-    
-    def addRoom(self, room):
-        self.rooms.append(room)
-
-    def numRooms(self):
-        return len(self.rooms)
-
-    def getPolygonById(self, id):
-        if id < 0 or id >= self.numRooms():
-            raise Exception("Room not found with index %i" % id)
-        return self.rooms[id]
-
-class MaxLDB:
-    #the block contains all the vertices from the level we don't need it
-    def skipCollisionVerticesBlock(self, f):
+class MaxLDBReader:
+    #collision things
+    def parseBSP(self, f) -> None:
         #Block header
         f.read(1)
         for i in range(parseType(f)):
-            parseType(f)
-
-    #the block contains all the polygons from the level we don't need it
-    def skipCollisionPolygonsBlock(self, f):
-        #Block header
-        f.read(1)
-        for i in range(parseType(f) * 6):
-            parseType(f)
-
-    #the block contains the collision hierarchy and some properties from the level we don't need it
-    def skipCollisionHierarchyBlock(self, f):
-        #Block header
-        f.read(1)
-        for i in range(parseType(f) * 8):
-            parseType(f)
+            self.ldb.getBsp().getVertices().add(BSPVertex(*parseType(f)))
         #Block header
         f.read(1)
         for i in range(parseType(f)):
-            parseType(f)
+            self.ldb.getBsp().getPolygons().add(
+                BSPPolygon(*[
+                    parseType(f), 
+                    parseType(f), 
+                    parseType(f), 
+                    parseType(f), 
+                    Vertex(*parseType(f)), 
+                    Vertex(*parseType(f))
+                ]))
+        #Block header
+        f.read(1)
+        for i in range(parseType(f)):
+            self.ldb.getBsp().getNodes().add(
+                BSPNode(*[
+                    Vertex(*parseType(f)),
+                    Vertex(*parseType(f)),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f)
+                ]))
+        #Block header
+        f.read(1)
+        for i in range(parseType(f)):
+            self.ldb.getBsp().getIndices().add(BSPPolygonIndex(parseType(f)))
 
-    #the block contains all the textures from the level
-    def parseTextureBlock(self, f):
+    #textures, lightmaps, material properties etc
+    def parseMaterials(self, f) -> None:
+        #Textures
         #Block header
         parseType(f)
         for i in range(parseType(f)):
-            file_name = parseType(f)
-            file_type = parseType(f)
-            file_size = parseType(f)
-            self.textures.addTexture(
-                file_name,
-                file_type,
-                file_size,
-                f.read(file_size)
-            )
+            self.ldb.getTextures().add(
+                Texture(*[
+                    parseType(f),
+                    parseType(f),
+                    f.read(parseType(f))
+                ]))
 
-    def parseMaterialsBlock(self, f):
         #Block header
         f.read(1)
-        material_properties = []
-        materials = []
+        #in the order how they are applied to the polygons
         for i in range(parseType(f)):
             material_id = parseType(f)
             f.read(1)
-            category_name = parseType(f)
-            material_name = parseType(f)
-            materials.append([category_name, material_name, i])
+            self.ldb.getMaterials().add(Material(i, material_id, parseType(f), parseType(f)))
 
         #Block header
         f.read(1)
+        #in the order how they were in MAX-ED
         for i in range(parseType(f)):
             f.read(1)
             category_name = parseType(f)
             material_name = parseType(f)
             material_id = parseType(f)
 
+        #material properties, materials properties also contain materials that haven't been used in the level, skip them
         for i in range(parseType(f)):
             category_name = parseType(f)
             for j in range(parseType(f)):
-                material_name = parseType(f)
+                material = self.ldb.getMaterials().findMaterialByCategoryAndName(category_name, parseType(f))
+                # skip unused materials
+                if material == None:
+                    parseType(f)
+                    parseType(f)
+                    parseType(f)
+                    parseType(f)
+                    continue
+                material.setDiffuseTexture(self.ldb.getTextures().findTextureByFileName(parseType(f)))
+                material.setAlphaTexture(self.ldb.getTextures().findTextureByFileName(parseType(f)))
+                material.setProperties(parseType(f), parseType(f))
 
-                diffuse_texture_name = parseType(f)
-                diffuse_texture = None
-                if diffuse_texture_name != "":
-                    diffuse_texture = self.textures.getTextureByName(diffuse_texture_name)
-
-                alpha_texture_name = parseType(f)
-                alpha_texture = None
-                if alpha_texture_name != "":
-                    alpha_texture = self.textures.getTextureByName(alpha_texture_name)
-                
-                has_alpha_test = parseType(f)
-                has_adult_content = parseType(f)
-                material_properties.append([
-                    category_name,
-                    material_name,
-                    diffuse_texture,
-                    alpha_texture,
-                    has_alpha_test,
-                    has_adult_content
-                ])
-
-        for material in materials:
-            for material_property in material_properties:
-                if material[0] == material_property[0] and material[1] == material_property[1]:
-                    self.materials.addMaterial(
-                        material[2], 
-                        material[0], 
-                        material[1],
-                        material_property[2],
-                        material_property[3],
-                        material_property[4],
-                        material_property[5],
-                        )
-                    break
-
+        #lightmaps
         for i in range(parseType(f)):
-            lightmap_id = parseType(f)
-            lightmap_file_type = parseType(f)
-            lightmap_file_size = parseType(f)
-            self.textures.addLightMap(
-                lightmap_id,
-                lightmap_file_type,
-                lightmap_file_size,
-                f.read(lightmap_file_size)
-            )
+            self.ldb.getLightMaps().add(
+                LightMapTexture(*[
+                    parseType(f),
+                    parseType(f),
+                    f.read(parseType(f))
+                ]))
 
-    #the block contains the exits hierarchy (or visibility portals) and some properties we don't need it
-    def skipExitsHierarchyBlock(self, f):
+    #portals aka exits hierarchy
+    def parseExits(self, f) -> None:
         for i in range(parseType(f)):
-            parseType(f)
+            exit_name = parseType(f)
+            #vertices
+            vertices = VertexContainer()
             for j in range(parseType(f)):
-                parseType(f)
-            for j in range(5):
-                parseType(f)
+                vertices.add(Vertex(*parseType(f)))
+            normal = parseType(f)
+            transform = parseType(f)
+            room_id = parseType(f)
+            parent_room_id = parseType(f)
+            parent_room_name = parseType(f)
+            #some bsp info idk how to work with it
             f.read(1)
             for j in range(parseType(f)):
                 f.read(1)
                 for k in range(parseType(f)):
                     parseType(f)
+            self.ldb.getExits().add(Exit(exit_name, vertices, normal, transform, room_id, parent_room_id, parent_room_name))
 
-    def parseTexureVerticesBlock(self, f):
-        #Block header
+    #static meshes each static mesh is like one room
+    def parseStaticMeshes(self, f) -> None:
+        #uv attributes
         f.read(1)
         for i in range(parseType(f)):
-            vertex_idx = parseType(f)
-            uv = parseType(f)
-            lightmap_uv = parseType(f)
-            parseType(f)
-            is_hidden = parseType(f)
-            self.texture_vertices.addTextureVertex(vertex_idx, uv, lightmap_uv, is_hidden)
-
-    def parseRoomsBlock(self, f):
-        for i in range(parseType(f)):
-            polygons = []
-            parseType(f)
-            room = Room(self.texture_vertices)
-            for j in range(parseType(f)):
-                room.addVertex(parseType(f))
-            f.read(1)
-            for j in range(parseType(f)):
-                room.addNormal(parseType(f))
-            room.addTransform(parseType(f))
-            for j in range(parseType(f)):
-                parseType(f)
-                texture_vertex_idx = parseType(f)
-                num_vertices = parseType(f)
-                normal = parseType(f)
-                parseType(f)
-                material = self.materials.getMaterialById(parseType(f))
-                lightmap = self.textures.getLightMapById(parseType(f))
-                for k in range(3):
+            self.ldb.getStaticMeshes().getTextureVertices().add(
+                TextureVertex(*[
+                    parseType(f),
+                    VertexUV(*parseType(f)),
+                    VertexUV(*parseType(f)),
+                    parseType(f),
                     parseType(f)
-                room.addPolygon(Polygon(texture_vertex_idx, num_vertices, material, lightmap))
+                ]))
+        #geometry
+        for i in range(parseType(f)):
+            static_mesh_id = parseType(f)
+            #vertices
+            vertices = VertexContainer()
+            for j in range(parseType(f)):
+                vertices.add(Vertex(*parseType(f)))
+            #normals
             f.read(1)
-            for j in range(parseType(f) * 2):
-                parseType(f)
-            self.rooms.addRoom(room)
+            normals = VertexContainer()
+            for j in range(parseType(f)):
+                normals.add(Vertex(*parseType(f)))
+            transform = parseType(f)
+            #polygons
+            polygons = PolygonContainer()
+            for j in range(parseType(f)):
+                polygons.add(Polygon(
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    self.ldb.getMaterials().getMaterialByIndex(parseType(f)),
+                    self.ldb.getLightMaps().getTextureById(parseType(f)),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f)
+                ))
+            f.read(1)
+            #seems another bsp thing
+            for j in range(parseType(f)):
+                parseType(f) #int
+                parseType(f) #float
+            self.ldb.getStaticMeshes().addStaticMesh(StaticMesh(
+                static_mesh_id,
+                vertices,
+                normals,
+                transform,
+                polygons
+            ))
 
-    def __init__(self, file_path):
-        self.textures = TextureContainer()
-        self.rooms = RoomCointainer()
-        self.texture_vertices = TexureVertexContainer()
-        self.materials = MaterialContainer()
+    def parseDynamicLights(self, f) -> None:
+        for i in range(parseType(f)):
+            self.ldb.getDynamicLights().add(DynamicLight(
+                parseType(f),
+                EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f)
+            ))
+
+    def parseWaypoints(self, f) -> None:
+        for i in range(parseType(f)):
+            self.ldb.getWaypoints().add(Waypoint(
+                parseType(f),
+                EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
+                parseType(f)))
+
+    def parseFSMs(self, f) -> None:
+        for i in range(parseType(f)):
+            shared_name = parseType(f)
+            properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
+            #custom states
+            f.read(1)
+            states = FSMStateContainer()
+            for j in range(parseType(f)):
+                states.add(parseType(f))
+            states.setDefault(parseType(f))
+            #startup event before message
+            f.read(1)
+            startup_before = FSMMessageContainer()
+            for j in range(parseType(f)):
+                startup_before.add(parseType(f))
+            #unk seems startup for state specific
+            f.read(1)
+            for j in range(parseType(f)): 
+                parseType(f) 
+            #startup event after message
+            f.read(1)
+            startup_after = FSMMessageContainer()
+            for j in range(parseType(f)):
+                startup_after.add(parseType(f))
+            #custom states switch messages
+            f.read(1)
+            state_switch = FSMEventContainer()
+            for j in range(parseType(f)):
+                state_name = parseType(f)
+                #before
+                f.read(1)
+                before = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    before.add(parseType(f))
+                #state specific
+                f.read(1)
+                state_specific = FSMStateSpecificMessageContainer()
+                for k in range(parseType(f)):
+                    state_name = parseType(f)
+                    f.read(1)
+                    messages = FSMMessageContainer()
+                    for l in range(parseType(f)):
+                        messages.add(parseType(f))
+                    state_specific.add(FSMStateSpecificMessage(state_name, messages))
+                #after
+                f.read(1)
+                after = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    after.add(parseType(f))
+                state_switch.add(FSMEvent(state_name, before, state_specific, after))
+            #custom string messages
+            f.read(1)
+            custom_string = FSMEventContainer()
+            for j in range(parseType(f)):
+                state_name = parseType(f)
+                #before
+                f.read(1)
+                before = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    before.add(parseType(f))
+                #state specific
+                f.read(1)
+                state_specific = FSMStateSpecificMessageContainer()
+                for k in range(parseType(f)):
+                    state_name = parseType(f)
+                    f.read(1)
+                    messages = FSMMessageContainer()
+                    for l in range(parseType(f)):
+                        messages.add(parseType(f))
+                    state_specific.add(FSMStateSpecificMessage(state_name, messages))
+                #after
+                f.read(1)
+                after = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    after.add(parseType(f))
+                custom_string.add(FSMEvent(state_name, before, state_specific, after))
+            #entity specific messages
+            f.read(1)
+            entity_specific = FSMEventContainer()
+            for j in range(parseType(f)):
+                state_name = parseType(f)
+                #before
+                f.read(1)
+                before = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    before.add(parseType(f))
+                #state specific
+                f.read(1)
+                state_specific = FSMStateSpecificMessageContainer()
+                for k in range(parseType(f)):
+                    state_name = parseType(f)
+                    f.read(1)
+                    messages = FSMMessageContainer()
+                    for l in range(parseType(f)):
+                        messages.add(parseType(f))
+                    state_specific.add(FSMStateSpecificMessage(state_name, messages))
+                #after
+                f.read(1)
+                after = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    after.add(parseType(f))
+                entity_specific.add(FSMEvent(state_name, before, state_specific, after))
+            self.ldb.getFSMs().add(FSM(shared_name, properties, states, startup_before, startup_after, state_switch, custom_string, entity_specific))
+
+    def parseCharacters(self, f) -> None:
+        for i in range(parseType(f)):
+            shared_name = parseType(f)
+            properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
+            character_name = parseType(f)
+            f.read(1)
+            startup_before = FSMMessageContainer()
+            for j in range(parseType(f)):
+                startup_before.add(parseType(f))
+            f.read(1)
+            on_death_before = FSMMessageContainer()
+            for j in range(parseType(f)):
+                on_death_before.add(parseType(f))
+            f.read(1)
+            on_activate_before = FSMMessageContainer()
+            for j in range(parseType(f)):
+                on_activate_before.add(parseType(f))
+            f.read(1)
+            on_special_before = FSMMessageContainer()
+            for j in range(parseType(f)):
+                on_special_before.add(parseType(f))
+            self.ldb.getCharacters().add(Character(shared_name, properties, character_name, startup_before, on_death_before, on_activate_before, on_special_before))
+
+    def parseTriggers(self, f) -> None:
+       for i in range(parseType(f)):
+            shared_name = parseType(f)
+            properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
+            radius = parseType(f)
+            #0 - action_button 3 - character_collide 4 - look_at_trigger 1 - player_collide 2 - projectile_collide
+            type = parseType(f)
+            self.ldb.getTriggers().add(Trigger(shared_name, properties, radius, type))
+    
+    def parseDynamicMeshes(self, f) -> None:
+        #uv attributes
+        f.read(1)
+        for i in range(parseType(f)):
+            self.ldb.getDynamicMeshes().getTextureVertices().add(
+                TextureVertex(*[
+                    parseType(f),
+                    VertexUV(*parseType(f)),
+                    VertexUV(*parseType(f)),
+                    parseType(f),
+                    parseType(f)
+                ]))
+        #geometry
+        for i in range(parseType(f)):
+            shared_name = parseType(f)
+            #vertices
+            vertices = VertexContainer()
+            for j in range(parseType(f)):
+                vertices.add(Vertex(*parseType(f)))
+            #normals
+            f.read(1)
+            normals = VertexContainer()
+            for j in range(parseType(f)):
+                normals.add(Vertex(*parseType(f)))
+            transform = parseType(f)
+            #polygons
+            polygons = PolygonContainer()
+            for j in range(parseType(f)):
+                polygons.add(Polygon(
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f),
+                    self.ldb.getMaterials().getMaterialByIndex(parseType(f)),
+                    self.ldb.getLightMaps().getTextureById(parseType(f)),
+                    parseType(f),
+                    parseType(f),
+                    parseType(f)
+                ))
+            f.read(1)
+            #radiosity light config value?
+            unk1 = parseType(f)
+            properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
+            #animation
+            animations = AnimationContainer()
+            for j in range(parseType(f)):
+                animation_name = parseType(f)
+                length_in_secs = parseType(f)
+                start_transform = parseType(f)
+                end_transform = parseType(f)
+                f.read(1)
+                leaving_first_frame = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    leaving_first_frame.add(parseType(f))
+                f.read(1)
+                returning_first_frame = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    returning_first_frame.add(parseType(f))
+                f.read(1)
+                reaching_second_frame = FSMMessageContainer()
+                for k in range(parseType(f)):
+                    reaching_second_frame.add(parseType(f))
+                #translation graph
+                parseType(f) #header
+                parseType(f) #major version
+                parseType(f) #minor version
+                sample_rate = parseType(f)
+                translation_graph = Graph(sample_rate)
+                for k in range(sample_rate):
+                    translation_graph.addPoint(parseType(f))
+                #rotation graph
+                parseType(f) #header
+                parseType(f) #major version
+                parseType(f) #minor version
+                sample_rate = parseType(f)
+                rotation_graph = Graph(sample_rate)
+                for k in range(sample_rate):
+                    rotation_graph.addPoint(parseType(f))
+                animations.add(Animation(
+                    animation_name,
+                    length_in_secs,
+                    start_transform,
+                    end_transform,
+                    leaving_first_frame,
+                    returning_first_frame,
+                    reaching_second_frame,
+                    translation_graph,
+                    rotation_graph
+                ))
+            config = DynamicMeshConfig(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
+            #bsp things
+            parseType(f)
+            parseType(f)
+            parseType(f)
+            parseType(f)
+            
+            self.ldb.getDynamicMeshes().addDynamicMesh(DynamicMesh(
+                shared_name,
+                properties,
+                vertices,
+                normals,
+                transform,
+                polygons,
+                animations,
+                config
+            ))
+
+    def parseItems(self, f) -> None:
+        for i in range(parseType(f)):
+            self.ldb.getItems().add(Item(
+                parseType(f),
+                EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
+                parseType(f)))
+
+    def parsePointLights(self, f) -> None:
+        for i in range(parseType(f)):
+            self.ldb.getItems().add(PointLight(
+                parseType(f),
+                EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f),
+                parseType(f)))
+
+    def parseRooms(self, f) -> None:
+        for i in range(parseType(f)):
+            id = parseType(f)
+            #static meshes ids
+            f.read(1)
+            static_meshes: list[int] = []
+            for j in range(parseType(f)):
+                static_meshes.append(parseType(f))
+            #dynamic lights
+            f.read(1)
+            dynamic_lights: list[str] = []
+            for j in range(parseType(f)):
+                dynamic_lights.append(parseType(f))
+            #exits
+            f.read(1)
+            exits: list[str] = []
+            for j in range(parseType(f)):
+                exits.append(parseType(f))
+            #start points
+            f.read(1)
+            start_points: list[str] = []
+            for j in range(parseType(f)):
+                start_points.append(parseType(f))
+            #fsms
+            f.read(1)
+            fsms: list[str] = []
+            for j in range(parseType(f)):
+                fsms.append(parseType(f))
+            #characters
+            f.read(1)
+            characters: list[str] = []
+            for j in range(parseType(f)):
+                characters.append(parseType(f))
+            #triggers
+            f.read(1)
+            triggers: list[str] = []
+            for j in range(parseType(f)):
+                triggers.append(parseType(f))
+            #dynamic meshes
+            f.read(1)
+            dynamic_meshes: list[str] = []
+            for j in range(parseType(f)):
+                dynamic_meshes.append(parseType(f))
+            #items
+            f.read(1)
+            level_items: list[str] = []
+            for j in range(parseType(f)):
+                level_items.append(parseType(f))
+            #pointlights
+            f.read(1)
+            point_lights: list[int] = []
+            for j in range(parseType(f)):
+                point_lights.append(parseType(f))
+            room_name = parseType(f)
+            ai_net_density = parseType(f)
+
+            self.ldb.getRooms().add(Room(
+                id,
+                room_name,
+                static_meshes,
+                dynamic_lights, 
+                exits, 
+                start_points,
+                fsms, 
+                characters,
+                triggers, 
+                dynamic_meshes, 
+                level_items, 
+                point_lights
+            ))
+
+            #bsp
+            parseType(f)
+            parseType(f)
+            parseType(f)
+            parseType(f)
+
+    def __init__(self) -> None:
+        self.ldb: MaxLDB = MaxLDB()
+
+    def parse(self, file_path) -> MaxLDB:
+        self.ldb: MaxLDB = MaxLDB()        
         try:
             with open(file_path, "rb") as f:
-                self.skipCollisionVerticesBlock(f)
-                self.skipCollisionPolygonsBlock(f)
-                self.skipCollisionHierarchyBlock(f)
-                self.parseTextureBlock(f)
-                self.parseMaterialsBlock(f)
-                self.skipExitsHierarchyBlock(f)
-                self.parseTexureVerticesBlock(f)
-                self.parseRoomsBlock(f)
+                self.parseBSP(f)
+                self.parseMaterials(f)
+                self.parseExits(f)
+                self.parseStaticMeshes(f)
+                self.parseDynamicLights(f)
+                self.parseWaypoints(f)
+                self.parseFSMs(f)
+                self.parseCharacters(f)
+                self.parseTriggers(f)
+                self.parseDynamicMeshes(f)
+                self.parseItems(f)
+                self.parsePointLights(f)
+                self.parseRooms(f)
         except IOError:
-            print('Error While Opening the file!', file_path)  
+            print("Error While Opening the file! %s" % file_path)
+        return self.ldb
