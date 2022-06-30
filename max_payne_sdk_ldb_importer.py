@@ -158,34 +158,78 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
             ])
 
     def createPolygons(self, mesh):
-        group_up = OpenMaya.MSelectionList() 
+        group_up = OpenMaya.MSelectionList()
+        grouped_by_materials = {}
         for polygon_idx in range(mesh.numPolygons()):
-            if not self.updateProgressBar("Importing: Processing geometry"):
-                break
-            selection = OpenMaya.MSelectionList()
             geometry = mesh.constructPolygon(polygon_idx)
-            num_points = len(geometry.vertices)
-            vertices = map(lambda vertex: OpenMaya.MFloatPoint(-vertex.x * 100.0, vertex.y * 100.0, vertex.z * 100.0), geometry.vertices)
-            normals = map(lambda normal: OpenMaya.MVector(-normal.x, normal.y, normal.z), geometry.normals)
-            us = list(map(lambda uv: uv.u, geometry.uv))
-            vs = list(map(lambda uv: 1.0 - uv.v, geometry.uv))
-            indices = list(range(num_points))
+            if geometry.material.id in grouped_by_materials:
+                grouped_by_materials[geometry.material.id].append(geometry)
+            else:
+                grouped_by_materials[geometry.material.id] = [geometry]
+
+        for material_id, geometries in grouped_by_materials.items():
+            uniq_vertices = []
+            uniq_uvs = []
+            uvs_indices_poly = []
+            poly_indices = []
+            poly_nums_points = []
+            selection = OpenMaya.MSelectionList()
+            normals_per_poly = {}
+            poly_id = -1
+            for geometry in geometries:
+                if not self.updateProgressBar("Importing: Processing geometry"):
+                    break
+                poly_id = poly_id + 1
+                poly_nums_points.append(len(geometry.vertices))
+                normals_per_poly[poly_id] = []
+                for i in range(len(geometry.vertices)):
+                    found = False
+                    for j in range(len(uniq_vertices)):
+                        if math.isclose(uniq_vertices[j].x, -geometry.vertices[i].x * 100.0):
+                            if math.isclose(uniq_vertices[j].y, geometry.vertices[i].y * 100.0):
+                                if math.isclose(uniq_vertices[j].z, geometry.vertices[i].z * 100.0):
+                                    found = True
+                                    poly_indices.append(j)
+                                    break
+                    if not found:
+                        uniq_vertices.append(OpenMaya.MFloatPoint(-geometry.vertices[i].x * 100.0, geometry.vertices[i].y * 100.0, geometry.vertices[i].z * 100.0))
+                        poly_indices.append(len(uniq_vertices) - 1)
+                    normals_per_poly[poly_id].append([poly_indices[-1], OpenMaya.MVector(-geometry.normals[i].x, geometry.normals[i].y, geometry.normals[i].z)])
+
+                for i in range(len(geometry.uv)):
+                    found = False
+                    for j in range(len(uniq_uvs)):
+                        if math.isclose(uniq_uvs[j].u, geometry.uv[i].u):
+                            if math.isclose(uniq_uvs[j].v, geometry.uv[i].v):
+                                found = True
+                                uvs_indices_poly.append(j)
+                                break
+                    if not found:
+                        uniq_uvs.append(geometry.uv[i])
+                        uvs_indices_poly.append(len(uniq_uvs) - 1)
             new_mesh = OpenMaya.MFnMesh()
-            new_mesh.create(vertices, [num_points], indices, us, vs)
-            new_mesh.setVertexNormals(normals, indices)
-            new_mesh.assignUVs([num_points], indices)
+            us = list(map(lambda uv: uv.u, uniq_uvs))
+            vs = list(map(lambda uv: 1.0 - uv.v, uniq_uvs))
+            new_mesh.create(uniq_vertices, poly_nums_points, poly_indices, us, vs)
+            new_mesh.assignUVs(poly_nums_points, uvs_indices_poly)
+
+            for poly_id, normal_vertex in normals_per_poly.items():
+                for element in normal_vertex:
+                    print(element[1], poly_id, element[0])
+                    new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
+
             selection.add(new_mesh.getPath())
             group_up.add(new_mesh.getPath())
             OpenMaya.MGlobal.setActiveSelectionList(selection)
             found = False
             for material in self.materials:
-                if geometry.material != None and geometry.material.id == material[0]:
+                if material_id == material[0]:
                     mc.hyperShade(assign=material[1])
                     found = True
                     break
             if not found:
                 mc.hyperShade(assign=self.empty_material)
-            new_mesh.updateSurface()
+            new_mesh.updateSurface()       
         return group_up
 
     def groupAndTransform(self, group_up, transfrom):
@@ -205,6 +249,8 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
         mc.rotate(rotation[0] * (180/math.pi), -rotation[1] * (180/math.pi), -rotation[2] * (180/math.pi), group, absolute=True)
         mc.move(-translation[0] * 100.0, translation[1] * 100.0, translation[2] * 100.0, group, absolute=True)
         mc.scale(scale[0], scale[1], scale[2], group, absolute=True)
+        if group_up.length() > 1:
+            mc.polyUnite(group, constructionHistory=False)
         return group
 
     def invRotationMatrix(self, in_m):
