@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from ensurepip import version
 
+CHUNK_HEADER_ID = b'\x0C'
 MATERIAL_LIST = 0x0001000f
 MATERIAL = 0x0010010
 TEXTURE = 0x00010011
-
 MESH = 0x00010005
 NODE = 0x00010000
 GEOMETRY = 0x00010006
@@ -12,26 +13,21 @@ POLYGON_MATERIAL = 0x0001000C
 UVMAPPING = 0x0001000e
 REFFERENCE_TO_DATA = 0x0001001A
 SMOOTHING = 0x0001000B
-
 CAMERA = 0x00010001
-
 KEYFRAME_ANIMATION = 0x00010012
 ANIMATION = 0x00010013
+ENVIRONMENT = 0x00010015
+
+SKIN = 0x00010014
 
 POINT_LIGHT = 0x00010002
 DIRECTIONAL_LIGHT = 0x00010003
 SPOT_LIGHT = 0x00010004
-
-SKIN = 0x00010014
-ENVIRONMENT = 0x00010015
 HELPER = 0x00010016
-
 POINT_LIGHT_ANIMATION = 0x00010017
 DIRECTIONAL_LIGHT_ANIMATION = 0x00010018
 SPOT_LIGHT_ANIMATION = 0x00010019
-
 POLYGON_CHUNK = 0x00010008
-CHUNK_HEADER_ID = b'\x0C'
 
 @dataclass
 class KF2ChunkHeader:
@@ -204,6 +200,7 @@ class KeyframeAnimationV5:
 
 @dataclass
 class MeshV2:
+    version: int
     node: NodeV1
     geometry: GeometryV1
     polygons: PolygonsV1
@@ -211,3 +208,26 @@ class MeshV2:
     uv_mapping: list[UVMappingV1]
     reference_to_data: RefferenceToDataV0
     smoothing: SmoothingChunkV0
+
+@dataclass
+class EnvironmentV0:
+    version: int
+    ambient_light_color_r: int
+    ambient_light_color_g: int
+    ambient_light_color_b: int
+    ambient_light_color_a: int
+    clearing_color_r: int
+    clearing_color_g: int
+    clearing_color_b: int
+    clearing_color_a: int
+
+@dataclass
+class SkinV1:
+    version: int
+
+@dataclass
+class Geometry:
+    version: int
+    vertices: list[list[float]] = []
+    normals: list[list[float]] = []
+    vertices_per_primitive: list[uint] = []

@@ -21,6 +21,8 @@ class MaxKF2:
         self.meshes = []
         self.cameras = []
         self.animations = []
+        self.environments = []
+        self.skins = []
 
     def hasMaterialList(self) -> bool:
         return True if len(self.material_list) > 0 else False
@@ -67,8 +69,32 @@ class MaxKF2:
     def getAnimationVersion(self, idx: int) -> int:
         return self.animations[idx].version
 
-    def addAnimations(self, animation) -> None:
+    def addAnimation(self, animation) -> None:
         self.animations.append(animation)
+
+    def hasEnvironments(self) -> bool:
+        return True if len(self.environments) > 0 else False
+
+    def numEnvironments(self) -> int:
+        return len(self.environments)
+
+    def getEnvironmentVersion(self, idx: int) -> int:
+        return self.environments[idx].version
+
+    def addEnvironment(self, environment) -> None:
+        self.environments.append(environment)
+
+    def hasSkins(self) -> bool:
+        return True if len(self.skins) > 0 else False
+
+    def numSkins(self) -> int:
+        return len(self.skins)
+
+    def getSkinVersion(self, idx: int) -> int:
+        return self.skins[idx].version
+
+    def addSkin(self, skin) -> None:
+        self.skins.append(skin)
 
 class MaxKF2Reader:
    def __parseChunk(self, kf2_chunk: kf2_type.KF2ChunkHeader, f) -> None:
@@ -88,11 +114,13 @@ class MaxKF2Reader:
             self.kf2.addMaterialList(kf2_material_list.MaterialListChunkReader().create(kf2_chunk).parse(f))
             return
         if kf2_chunk.id == kf2_type.KEYFRAME_ANIMATION:
-            self.kf2.addAnimations(kf2_keyframe_animation.KeyframeAnimationChunkReader().create(kf2_chunk).parse(f))
+            self.kf2.addAnimation(kf2_keyframe_animation.KeyframeAnimationChunkReader().create(kf2_chunk).parse(f))
             return
         if kf2_chunk.id == kf2_type.SKIN:
+            self.kf2.addSkin(kf2_skin.SkinChunkReader().create(kf2_chunk).parse(f))
             return
         if kf2_chunk.id == kf2_type.ENVIRONMENT:
+            self.kf2.addEnvironment(kf2_environment.EnvironmentChunkReader().create(kf2_chunk).parse(f))
             return
         if kf2_chunk.id == kf2_type.HELPER:
             return
