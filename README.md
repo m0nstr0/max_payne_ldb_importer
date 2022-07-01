@@ -42,7 +42,7 @@ Linux:
 /home/<username>/maya/<version>/plug-ins/
 ```
 
-Put the ```max_payne_sdk``` directory into the ```scripts``` directory:
+Put the ```max_payne_sdk``` and the ```max_payne_maya``` into the ```scripts``` directory:
 
 Windows:
 
