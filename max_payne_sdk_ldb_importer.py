@@ -215,7 +215,6 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
 
             for poly_id, normal_vertex in normals_per_poly.items():
                 for element in normal_vertex:
-                    print(element[1], poly_id, element[0])
                     new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
 
             selection.add(new_mesh.getPath())
