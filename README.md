@@ -1,5 +1,4 @@
-# Max Payne LDB Importer
-Max Payne 1 LDB (Game levels) files importer plugin for Maya 2022
+# Max Payne 1 LDB Importer plugin for Maya 2022
 
 <img src="./docs/images/max_img.jpg" />
 
