@@ -151,6 +151,7 @@ class MayaLDBMeshlOps:
                 static_mesh = self.ldb.getStaticMeshes().getById(static_mesh_id)
                 self.groupAndTransform(self.createPolygons(static_mesh), static_mesh.transform)
                 room_transform[room.id] = static_mesh.transform
+        for room in self.ldb.getRooms().rooms:
             for dynamic_mesh_name in room.dynamic_meshes:
                 if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
                     break
