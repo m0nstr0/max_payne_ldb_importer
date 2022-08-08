@@ -483,7 +483,7 @@ class MaxLDBReader:
 
     def parsePointLights(self, f) -> None:
         for i in range(parseType(f)):
-            self.ldb.getItems().add(PointLight(
+            self.ldb.getPointlights().add(PointLight(
                 parseType(f),
                 EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
                 parseType(f),
