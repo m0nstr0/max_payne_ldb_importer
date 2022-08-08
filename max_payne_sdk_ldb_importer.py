@@ -2,7 +2,7 @@ import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import sys
 import math
-import max_payne_sdk.max_ldb as max_ldb 
+import max_payne_sdk.max_ldb as max_ldb
 import maya.cmds as mc
 import max_payne_maya.ldb.material as material
 import max_payne_maya.ldb.mesh as mesh
@@ -12,7 +12,8 @@ PLUGIN_NAME = "Max Payne LDB Import"
 PLUGIN_COMPANY = "Bolotaev Sergey"
 FILE_EXT = 'ldb'
 
-class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
+
+class MaxPayneSDKTranslator(OpenMayaMPx.MPxFileTranslator):
     def __init__(self):
         OpenMayaMPx.MPxFileTranslator.__init__(self)
         self.kwargs = {}
@@ -31,7 +32,7 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
     def defaultExtension(self):
         return FILE_EXT
 
-    def identifyFile (self, file_obj, buffer, size):
+    def identifyFile(self, file_obj, buffer, size):
         return OpenMayaMPx.MPxFileTranslator.kIsMyFileType
 
     def specifyDirectoryForTextures(self):
@@ -50,22 +51,22 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
     def updateProgressBar(self, message):
         self.progress_amount = self.progress_amount + self.progress_delta
         window_title = "Importing MaxPayne Level"
-        if mc.progressWindow( query=True, isCancelled=True ):
+        if mc.progressWindow(query=True, isCancelled=True):
             self.endProgressBar()
             mc.confirmDialog(message="File import was canceled")
             return False
         if self.progress_amount == 0:
             mc.progressWindow(title=window_title,
-					progress=0,
-					status=message,
-					isInterruptable=True)
+                              progress=0,
+                              status=message,
+                              isInterruptable=True)
             return True
         if self.progress_amount >= 100:
             self.endProgressBar()
-            return True       
+            return True
         mc.progressWindow(edit=True, progress=self.progress_amount, status=message)
         return True
-        
+
     def calculateItems(self, ldb):
         num_ops = len(ldb.getMaterials().materials)
         num_ops = num_ops + len(ldb.getRooms().rooms)
@@ -82,7 +83,7 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
         if texture_directory == "":
             mc.confirmDialog(message="File import was canceled")
             return
- 
+
         progressOps = progress.MayaProgressOps()
         try:
             progressOps.updateProgressBar("Importing: Reading File")
@@ -90,7 +91,7 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
             progressOps.setNumOps(self.calculateItems(ldb))
             mesh.MayaLDBMeshlOps(
                 ldb,
-                material.MayaLDBMaterialOps(ldb, texture_directory, progressOps), 
+                material.MayaLDBMaterialOps(ldb, texture_directory, progressOps),
                 progressOps)
         except Exception:
             sys.stderr.write("Failed to import file: %s" % file.expandedFullName())
@@ -101,21 +102,24 @@ class MaxPayneSDKTranslator( OpenMayaMPx.MPxFileTranslator ):
         progressOps.endProgressBar()
         mc.confirmDialog(message="File was imported")
 
-def createMaxPayneSDKTranslator():
-    return OpenMayaMPx.asMPxPtr( MaxPayneSDKTranslator() )
 
-def initializePlugin( mobject ):
+def createMaxPayneSDKTranslator():
+    return OpenMayaMPx.asMPxPtr(MaxPayneSDKTranslator())
+
+
+def initializePlugin(mobject):
     mplugin = OpenMayaMPx.MFnPlugin(mobject, PLUGIN_COMPANY, '1.0', "Any")
     try:
-        mplugin.registerFileTranslator( PLUGIN_NAME, None, createMaxPayneSDKTranslator)
+        mplugin.registerFileTranslator(PLUGIN_NAME, None, createMaxPayneSDKTranslator)
     except:
-        sys.stderr.write( "Failed to register translator: %s" % PLUGIN_NAME )
+        sys.stderr.write("Failed to register translator: %s" % PLUGIN_NAME)
         raise
+
 
 def uninitializePlugin(mobject):
     mplugin = OpenMayaMPx.MFnPlugin(mobject)
     try:
-        mplugin.deregisterFileTranslator( PLUGIN_NAME )
+        mplugin.deregisterFileTranslator(PLUGIN_NAME)
     except:
-        sys.stderr.write( "Failed to deregister translator: %s" % PLUGIN_NAME )
+        sys.stderr.write("Failed to deregister translator: %s" % PLUGIN_NAME)
         raise
