@@ -75,7 +75,7 @@ class MaxLDBReader:
         for i in range(parseType(f)):
             self.ldb.getBsp().getIndices().add(BSPPolygonIndex(parseType(f)))
 
-    #textures, lightmaps, material properties etc
+    #textures, lightmaps, material_reader properties etc
     def parseMaterials(self, f) -> None:
         #Textures
         #Block header
@@ -105,7 +105,7 @@ class MaxLDBReader:
             material_name = parseType(f)
             material_id = parseType(f)
 
-        #material properties, materials properties also contain materials that haven't been used in the level, skip them
+        #material_reader properties, materials properties also contain materials that haven't been used in the level, skip them
         for i in range(parseType(f)):
             category_name = parseType(f)
             for j in range(parseType(f)):
