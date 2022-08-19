@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from ensurepip import version
 
 CHUNK_HEADER_ID = b'\x0C'
 MATERIAL_LIST = 0x0001000f
@@ -17,9 +16,7 @@ CAMERA = 0x00010001
 KEYFRAME_ANIMATION = 0x00010012
 ANIMATION = 0x00010013
 ENVIRONMENT = 0x00010015
-
 SKIN = 0x00010014
-
 POINT_LIGHT = 0x00010002
 DIRECTIONAL_LIGHT = 0x00010003
 SPOT_LIGHT = 0x00010004
@@ -32,30 +29,30 @@ POLYGON_CHUNK = 0x00010008
 @dataclass
 class KF2ChunkHeader:
     id: int
-    version: uint
-    size: uint
+    version: int
+    size: int
 
 @dataclass
 class TextureAnimationInfo:
     is_automatic_start: bool
     is_random_start_frame: bool
     start_frame: int
-    playback_fPS: int
+    playback_fps: int
     #Loop 0x00 PingPong 0x01 Hold 0x02
     end_condition: int
 
 @dataclass
-class TextureV1:
+class Texture:
     version: int
     name: str
     mip_maps_num: int
     #None 0x00 Billinear 0x01 Auto 0x02 Trilinear 0x03 Anisotropic 0x04
     filtering_type: int
-    textures: list[str]
+    textures: []
     animation_info: TextureAnimationInfo
 
 @dataclass
-class MaterialV1:
+class Material:
     version: int
     name: str
     is_two_sided: bool
@@ -94,120 +91,150 @@ class MaterialV1:
     specular_color_b: float
     specular_color_a: float
     vertex_alpha: float
-    sepecular_exponent: float
-    emboss_factor: TextureV1
-    diffuse_texture: TextureV1
-    reflection_texture: TextureV1
-    bump_texture: TextureV1
-    opacity_texture: TextureV1
-    mask_texture: TextureV1
-
-@dataclass
-class MaterialV2(MaterialV1):
+    specular_exponent: float
+    emboss_factor: Texture
+    diffuse_texture: Texture
+    reflection_texture: Texture
+    bump_texture: Texture
+    opacity_texture: Texture
+    mask_texture: Texture
+    #max payne 2 flags (Material version 1)
     unk1: bool
     unk2: bool
     unk3: int
 
 @dataclass
-class MaterialListV0:
+class MaterialList:
     version: int
     texture_dirs: str
-    materials = []
+    materials: []
 
 @dataclass
-class NodeV1:
+class Node:
     version: int
     name: str
     parent_name: str
-    object_to_parent_tranform: list[list[list[float]]]
+    object_to_parent_transform: []
     has_parent: bool
     user_defined_string: str
 
 @dataclass
-class GeometryV1:
+class Camera:
     version: int
-    vertices: list[list[float]]
-    normals: list[list[float]]
-    vertices_per_primitive: list[uint]
-
-@dataclass
-class PolygonsV1:
-    version: int
-    polygons_indicies: list[int]
-    polygons_per_primitive: list[uint]
-
-@dataclass
-class PolygonMaterialV1:
-    version: int
-    name: list[str]
-
-@dataclass
-class UVMappingV1:
-    version: int
-    layer: uint
-    #u,v,w
-    coordinates: list[list[float]]
-    coordinates_per_primitive: list[uint]
-
-@dataclass
-class RefferenceToDataV0:
-    version: int
-    referenced_object_name: str
-
-@dataclass
-class SmoothingChunkV0:
-    version: int
-
-@dataclass
-class CameraV0:
-    version: int
-    node: NodeV1
+    node: Node
     fov: float
     front_plane: float
     back_plane: float
 
 @dataclass
 class AnimationKeyframe:
-    frame_id: uint
-    transform: list[list[float]]
+    frame_id: int
+    transform: []
 
 @dataclass
 class AnimationVisibilityframe:
-    frame_id: uint
+    frame_id: int
     visibility: float
 
 @dataclass
-class AnimationV0:
+class Animation:
     version: int
     object_name: str
     fps: int
     is_looping: bool
 
 @dataclass
-class KeyframeAnimationV5:
+class KeyframeAnimation:
     version: int
-    animation: AnimationV0
+    animation: Animation
     parent_name: str
     use_loop_interpolation: bool
-    num_total_keyframes: uint
-    num_key_frames: uint
-    keyframes: list[AnimationKeyframe]
-    num_visibility_frames: uint
-    visibility_frames: list[AnimationVisibilityframe]
-    loop_to_frame: uint
+    num_total_keyframes: int #uint
+    num_key_frames: int #uint
+    keyframes: []
+    num_visibility_frames: int #uint
+    visibility_frames: []
+    loop_to_frame: int
     frame_to_frame_interpolation_method: int
     maintain_matrix_scaling: bool
 
 @dataclass
-class MeshV2:
+class Geometry:
     version: int
-    node: NodeV1
-    geometry: GeometryV1
-    polygons: PolygonsV1
-    polygon_material: PolygonMaterialV1
-    uv_mapping: list[UVMappingV1]
-    reference_to_data: RefferenceToDataV0
-    smoothing: SmoothingChunkV0
+    vertices: [] #list[list[float]]
+    normals: [] #list[list[float]]
+    vertices_per_primitive: [] #list[int] #uint
+
+@dataclass
+class Polygons:
+    version: int
+    polygons_indices: [] #list[int]
+    polygons_per_primitive: [] #list[int] #uint
+
+@dataclass
+class PolygonMaterial:
+    version: int
+    name: [] #list[str]
+
+@dataclass
+class UVMapping:
+    version: int
+    layer: int #uint
+    #u,v,w
+    coordinates: [] #list[list[float]]
+    coordinates_per_primitive: [] #list[int] #uint
+
+@dataclass
+class RefferenceToData:
+    version: int
+    referenced_object_name: str
+
+@dataclass
+class SmoothingChunk:
+    version: int
+
+@dataclass
+class Mesh:
+    version: int
+    node: Node
+    geometry: Geometry
+    polygons: Polygons
+    polygon_material: PolygonMaterial
+    uv_mapping: [] #list[UVMappingV1]
+    reference_to_data: RefferenceToData
+    smoothing: SmoothingChunk
+
+@dataclass
+class SkinVertex:
+    vertex_index: int
+    vertex_bone_indices: []
+    vertex_weights: []
+
+@dataclass
+class Skin:
+    version: int
+    skin_object_names: []
+    skeleton_object_names: []
+    skin_vertices: []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @dataclass
 class EnvironmentV0:
@@ -221,13 +248,11 @@ class EnvironmentV0:
     clearing_color_b: int
     clearing_color_a: int
 
-@dataclass
-class SkinV1:
-    version: int
+
 
 @dataclass
 class Geometry:
     version: int
-    vertices: list[list[float]] = []
-    normals: list[list[float]] = []
-    vertices_per_primitive: list[uint] = []
+    vertices: [] #list[list[float]]
+    normals: [] #list[list[float]]
+    vertices_per_primitive: [] #list[int] #uint

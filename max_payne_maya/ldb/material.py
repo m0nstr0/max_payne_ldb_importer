@@ -90,7 +90,7 @@ class MayaLDBMaterialOps:
                 raise
 
         if texture.getFileTypeName() == "scx":
-            sys.stdout.write("The level contains scx file. This format is not supported. Empty material will be used")
+            sys.stdout.write("The level contains scx file. This format is not supported. Empty material_reader will be used")
             return ""
 
         if is_alpha == True:

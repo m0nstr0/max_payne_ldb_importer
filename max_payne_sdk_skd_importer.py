@@ -4,12 +4,11 @@ import max_payne_sdk.max_kf2 as max_kf2
 import maya.cmds as mc
 import max_payne_maya.kf2 as maya_kf2
 
-PLUGIN_NAME = "Max Payne KF2 Import"
+PLUGIN_NAME = "Max Payne SKD Import"
 PLUGIN_COMPANY = "Bolotaev Sergey"
-FILE_KF2_EXT = 'kf2'
-FILE_KFS_EXT = 'kfs'
+FILE_SKD_EXT = 'skd'
 
-class MaxPayneKF2Translator(OpenMayaMPx.MPxFileTranslator):
+class MaxPayneSKDTranslator(OpenMayaMPx.MPxFileTranslator):
     def __init__(self):
         OpenMayaMPx.MPxFileTranslator.__init__(self)
         self.kwargs = {}
@@ -23,10 +22,10 @@ class MaxPayneKF2Translator(OpenMayaMPx.MPxFileTranslator):
         return True
 
     def filter(self):
-        return "*.{}".format(FILE_KF2_EXT)
+        return "*.{}".format(FILE_SKD_EXT)
 
     def defaultExtension(self):
-        return FILE_KF2_EXT
+        return FILE_SKD_EXT
 
     def identifyFile(self, file_obj, buffer, size):
         return OpenMayaMPx.MPxFileTranslator.kIsMyFileType
@@ -42,7 +41,7 @@ class MaxPayneKF2Translator(OpenMayaMPx.MPxFileTranslator):
             raise
 
 def createMaxPayneKF2Translator():
-    return OpenMayaMPx.asMPxPtr(MaxPayneKF2Translator())
+    return OpenMayaMPx.asMPxPtr(MaxPayneSKDTranslator())
 
 
 def initializePlugin(mobject):
