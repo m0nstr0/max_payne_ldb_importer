@@ -7,6 +7,7 @@ import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaAnim as OpenMayaAnim
 import math
+import os
 
 class KF2ImportDialogUI(QtWidgets.QDialog):
     def __init__(self):
@@ -156,7 +157,20 @@ class KF2ImportDialog(KF2ImportDialogUI):
         self.accept()
 
     def importMaterial(self):
-        pass
+        for material_list in self.kf2.getMaterialList():
+            for material in material_list.materials:
+                shader = mc.shadingNode("lambert", asShader = True, name = material.name)
+                shading_group = mc.sets(renderable = True, noSurfaceShader = True, empty = True)
+                mc.connectAttr("%s.outColor" % shader, "%s.surfaceShader" % shading_group)
+
+                if material.diffuse_texture is not None and len(material.diffuse_texture.textures) > 0:
+                    diffuse_file_node = mc.shadingNode("file", asTexture = True, name = material.name + "_diffuse")
+                    mc.setAttr("%s.fileTextureName" % diffuse_file_node, os.path.join(self.textureDirectory.text(), material.diffuse_texture.textures[0]), type = "string")
+                    mc.connectAttr("%s.outColor" % diffuse_file_node, "%s.color" % shader)
+
+                #alpha_file_node = mc.shadingNode("file", asTexture = True, name = material.name + "_alpha")
+                #mc.setAttr("%s.fileTextureName" % alpha_file_node, alpha_file_path, type = "string")
+                #mc.connectAttr("%s.outColor" % alpha_file_node, "%s.transparency" % shader)
 
     def importMesh(self):
         nodes = {}
@@ -200,8 +214,8 @@ class KF2ImportDialog(KF2ImportDialogUI):
             if len(mesh.uv_mapping) > 0:
                 for uv in mesh.uv_mapping:
                     for num_uvs in uv.coordinates_per_primitive:
-                        us_buffer.append([(x[0]) for x in uv.coordinates[start_uv:start_uv + num_uvs]])
-                        vs_buffer.append([(1.0 - x[1]) for x in uv.coordinates[start_uv:start_uv + num_uvs]])
+                        us_buffer.append([x[0] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
+                        vs_buffer.append([-x[1] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
                         start_uv = start_uv + num_uvs
                     break
             #generate mesh
@@ -217,6 +231,10 @@ class KF2ImportDialog(KF2ImportDialogUI):
                         new_mesh.assignUV(face_id, 1, index_buffers[primitive_id][face_id * 3 + 1])
                         new_mesh.assignUV(face_id, 2, index_buffers[primitive_id][face_id * 3 + 2])
                 new_mesh.updateSurface()
+                #materials
+                if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
+                    OpenMaya.MGlobal.setActiveSelectionList(OpenMaya.MSelectionList().add(new_mesh.getPath()))
+                    mc.hyperShade(assign = mesh.polygon_material.name[primitive_id])
                 selection.add(new_mesh.getPath())
             #transform
             OpenMaya.MGlobal.setActiveSelectionList(selection)
