@@ -4,6 +4,7 @@ import max_payne_sdk.max_kf2_reader.material_reader.material_list as kf2_materia
 import max_payne_sdk.max_kf2_reader.camera_reader.camera as kf2_camera
 import max_payne_sdk.max_kf2_reader.animation_reader.keyframe_animation as kf2_keyframe_animation
 import max_payne_sdk.max_kf2_reader.mesh_reader.mesh as kf2_mesh
+import max_payne_sdk.max_kf2_reader.skin_reader.skin as kf2_skin
 
 class MaxKF2:
     def __init__(self) -> None:
@@ -62,6 +63,18 @@ class MaxKF2:
     def getMeshes(self):
         return self.meshes
 
+    def hasSkins(self) -> bool:
+        return True if len(self.skins) > 0 else False
+
+    def numSkins(self) -> int:
+        return len(self.skins)
+
+    def addSkin(self, skin) -> None:
+        self.skins.append(skin)
+
+    def getSkins(self):
+        return self.skins
+
 
 
 
@@ -78,17 +91,7 @@ class MaxKF2:
     def addEnvironment(self, environment) -> None:
         self.environments.append(environment)
 
-    def hasSkins(self) -> bool:
-        return True if len(self.skins) > 0 else False
 
-    def numSkins(self) -> int:
-        return len(self.skins)
-
-    def getSkinVersion(self, idx: int) -> int:
-        return self.skins[idx].version
-
-    def addSkin(self, skin) -> None:
-        self.skins.append(skin)
 
 class MaxKF2Reader:
    def __parseChunk(self, kf2_chunk: kf2_type.KF2ChunkHeader, f) -> None:
@@ -111,7 +114,7 @@ class MaxKF2Reader:
             self.kf2.addKeyframeAnimation(kf2_keyframe_animation.KeyframeAnimationChunkReader().create(f, kf2_type.KEYFRAME_ANIMATION, kf2_chunk))
             return
         if kf2_chunk.id == kf2_type.SKIN:
-            #self.kf2.addSkin(kf2_skin.SkinChunkReader().create(kf2_chunk).parse(f))
+            self.kf2.addSkin(kf2_skin.SkinChunkReader().create(f, kf2_type.SKIN, kf2_chunk))
             return
         if kf2_chunk.id == kf2_type.ENVIRONMENT:
             #self.kf2.addEnvironment(kf2_environment.EnvironmentChunkReader().create(kf2_chunk).parse(f))

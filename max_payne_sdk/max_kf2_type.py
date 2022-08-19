@@ -204,8 +204,18 @@ class Mesh:
     reference_to_data: RefferenceToData
     smoothing: SmoothingChunk
 
+@dataclass
+class SkinVertex:
+    vertex_index: int
+    vertex_bone_indices: []
+    vertex_weights: []
 
-
+@dataclass
+class Skin:
+    version: int
+    skin_object_names: []
+    skeleton_object_names: []
+    skin_vertices: []
 
 
 
@@ -238,9 +248,7 @@ class EnvironmentV0:
     clearing_color_b: int
     clearing_color_a: int
 
-@dataclass
-class SkinV1:
-    version: int
+
 
 @dataclass
 class Geometry:

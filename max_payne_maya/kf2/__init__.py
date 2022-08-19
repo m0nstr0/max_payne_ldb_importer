@@ -5,6 +5,7 @@ from shiboken2 import wrapInstance
 import max_payne_sdk.max_kf2 as max_kf2
 import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
+import maya.api.OpenMayaAnim as OpenMayaAnim
 import math
 
 class KF2ImportDialogUI(QtWidgets.QDialog):
@@ -245,6 +246,49 @@ class KF2ImportDialog(KF2ImportDialogUI):
     def importAnimation(self):
         pass
 
+    def importSkin(self):
+        mp_node_names = mc.ls("*.mp_node_name", o=True)
+        for skin in self.kf2.getSkins():
+            skeleton_object_names_dict = {}
+            skeleton_object_names = []
+            for i in range(len(skin.skeleton_object_names)):
+                for mp_node_name in mp_node_names:
+                    if skin.skeleton_object_names[i].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
+                        skeleton_object_names_dict[mp_node_name.lower()] = i
+                        skeleton_object_names.append(mp_node_name)
+                        break
+            skin_object_name = ""
+            for mp_node_name in mp_node_names:
+                if skin.skin_object_names[0].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
+                    skin_object_name = mp_node_name
+                    break
+            #raise ValueError(skeleton_object_names_dict)
+            mc.select(skeleton_object_names)
+            mc.select(skin_object_name, add=True)
+            skin_cluster_name = mc.skinCluster()
+            skin_object_dag = OpenMaya.MGlobal.getSelectionListByName(skin_object_name).getDagPath(0)
+            skin_fn = OpenMayaAnim.MFnSkinCluster(OpenMaya.MGlobal.getSelectionListByName(skin_cluster_name[0]).getDependNode(0))
+            skin_id_to_cluster_id = {}
+            for bone_dag in skin_fn.influenceObjects():
+                skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
+
+            influences = []
+            weights = []
+            for skin_vertex in skin.skin_vertices:
+                bones_set = {*skin_vertex.vertex_bone_indices}
+                influences.append(OpenMaya.MIntArray())
+                weights.append(OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))]))
+                for bone_index in skin_vertex.vertex_bone_indices:
+                    influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
+                for i in range(len(skin_vertex.vertex_weights)):
+                    weights[skin_vertex.vertex_index][i] = skin_vertex.vertex_weights[i]
+                for i in skin_id_to_cluster_id.values():
+                    if i not in bones_set:
+                        influences[skin_vertex.vertex_index].append(i)
+
+            for component in OpenMaya.MItGeometry(skin_object_dag):
+                skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:
             self.importSkeleton()
@@ -255,6 +299,8 @@ class KF2ImportDialog(KF2ImportDialogUI):
             self.importMesh()
         if self.cameraCheckBox.checkState() == QtCore.Qt.Checked:
             self.importCamera()
+        if self.skinCheckBox.checkState() == QtCore.Qt.Checked:
+            self.importSkin()
         if self.amimationCheckBox.checkState() == QtCore.Qt.Checked:
             self.importAnimation()
         self.accept()
@@ -268,6 +314,10 @@ class KF2ImportDialog(KF2ImportDialogUI):
             self.materialCheckBox.setDisabled(True)
         if not self.kf2.hasKeyframeAnimations():
             self.amimationCheckBox.setDisabled(True)
+        if not self.kf2.hasSkins():
+            self.skinCheckBox.setDisabled(True)
+
+
 
         if not self.kf2.hasCameras():
             self.pointLightCheckBox.setDisabled(True)
@@ -275,8 +325,7 @@ class KF2ImportDialog(KF2ImportDialogUI):
             self.directionalLightCheckBox.setDisabled(True)
         if not self.kf2.hasCameras():
             self.spotLightCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.skinCheckBox.setDisabled(True)
+
         if not self.kf2.hasEnvironments():
             self.environmentCheckBox.setDisabled(True)
         if not self.kf2.hasCameras():
