@@ -8,6 +8,7 @@ MESH = 0x00010005
 NODE = 0x00010000
 GEOMETRY = 0x00010006
 POLYGONS = 0x00010007
+POLYGON = 0x00010008
 POLYGON_MATERIAL = 0x0001000C
 UVMAPPING = 0x0001000e
 REFFERENCE_TO_DATA = 0x0001001A
@@ -24,7 +25,7 @@ HELPER = 0x00010016
 POINT_LIGHT_ANIMATION = 0x00010017
 DIRECTIONAL_LIGHT_ANIMATION = 0x00010018
 SPOT_LIGHT_ANIMATION = 0x00010019
-POLYGON_CHUNK = 0x00010008
+
 
 @dataclass
 class KF2ChunkHeader:
@@ -149,10 +150,10 @@ class KeyframeAnimation:
     animation: Animation
     parent_name: str
     use_loop_interpolation: bool
-    num_total_keyframes: int #uint
-    num_key_frames: int #uint
+    num_total_keyframes: int
+    num_key_frames: int
     keyframes: []
-    num_visibility_frames: int #uint
+    num_visibility_frames: int
     visibility_frames: []
     loop_to_frame: int
     frame_to_frame_interpolation_method: int
@@ -161,28 +162,40 @@ class KeyframeAnimation:
 @dataclass
 class Geometry:
     version: int
-    vertices: [] #list[list[float]]
-    normals: [] #list[list[float]]
-    vertices_per_primitive: [] #list[int] #uint
+    vertices: []
+    normals: []
+    vertices_per_primitive: []
+
+@dataclass
+class Polygon:
+    version: int
+    num_vertices: int
+    vertex_indices: []
 
 @dataclass
 class Polygons:
     version: int
-    polygons_indices: [] #list[int]
-    polygons_per_primitive: [] #list[int] #uint
+    polygons_indices: []
+    polygons_per_primitive: []
 
 @dataclass
 class PolygonMaterial:
     version: int
-    name: [] #list[str]
+    name: []
+    material_index_for_polygon: []
+
+@dataclass
+class PolygonUVIndex:
+    uv_index: []
 
 @dataclass
 class UVMapping:
     version: int
-    layer: int #uint
+    layer: int
     #u,v,w
-    coordinates: [] #list[list[float]]
-    coordinates_per_primitive: [] #list[int] #uint
+    coordinates: []
+    coordinates_per_primitive: []
+    polygons_uv_indices: []
 
 @dataclass
 class RefferenceToData:
@@ -190,8 +203,16 @@ class RefferenceToData:
     referenced_object_name: str
 
 @dataclass
-class SmoothingChunk:
+class Smoothing:
     version: int
+    smoothing_groups: []
+
+@dataclass
+class Geometry:
+    version: int
+    vertices: [] #list[list[float]]
+    normals: [] #list[list[float]]
+    vertices_per_primitive: [] #list[int] #uint
 
 @dataclass
 class Mesh:
@@ -202,7 +223,7 @@ class Mesh:
     polygon_material: PolygonMaterial
     uv_mapping: [] #list[UVMappingV1]
     reference_to_data: RefferenceToData
-    smoothing: SmoothingChunk
+    smoothing: Smoothing
 
 @dataclass
 class SkinVertex:
@@ -250,9 +271,3 @@ class EnvironmentV0:
 
 
 
-@dataclass
-class Geometry:
-    version: int
-    vertices: [] #list[list[float]]
-    normals: [] #list[list[float]]
-    vertices_per_primitive: [] #list[int] #uint

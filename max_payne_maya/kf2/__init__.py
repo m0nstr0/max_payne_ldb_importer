@@ -14,7 +14,7 @@ class KF2ImportDialogUI(QtWidgets.QDialog):
         maya_window_ptr = omui.MQtUtil.mainWindow()
         parent = wrapInstance(int(maya_window_ptr), QtWidgets.QWidget)
         super(KF2ImportDialogUI, self).__init__(parent)
-        self.setWindowTitle("Max Payne KF2 Importer")
+        self.setWindowTitle("Max Payne KF2 KFS SKD Importer")
         self.resize(600, 500)
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.mainLayout.setContentsMargins(10, 10, 10, 10)
@@ -188,55 +188,32 @@ class KF2ImportDialog(KF2ImportDialogUI):
 
         meshes = {}
         for mesh in self.kf2.getMeshes():
+            if mesh.geometry is None or mesh.polygons is None:
+                continue
             mc.select(clear = True)
-            transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
-            tr = transform.translation(OpenMaya.MSpace.kTransform)
-            ro = transform.rotation(asQuaternion = False)
-            s = transform.scale(OpenMaya.MSpace.kWorld)
-            #vertices
-            vertex_buffers = []
-            start_vertex = 0
-            for num_vertices in mesh.geometry.vertices_per_primitive:
-                vertex_buffers.append([OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0) for x in mesh.geometry.vertices[start_vertex:start_vertex + num_vertices]])
-                start_vertex = start_vertex + num_vertices
-            #indices
-            start_index = 0
-            index_buffers = []
-            num_points = []
-            for num_indices in mesh.polygons.polygons_per_primitive:
-                index_buffers.append(mesh.polygons.polygons_indices[start_index:start_index + num_indices * 3])
-                num_points.append([3 for x in range(num_indices)])
-                start_index = start_index + num_indices * 3
-            #uvs
-            start_uv = 0
-            us_buffer = []
-            vs_buffer = []
+            vertices = [OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0) for x in mesh.geometry.vertices]
+            indices = mesh.polygons.polygons_indices
+            num_points = [3 for x in range(int(len(mesh.polygons.polygons_indices) / 3))]
+            us = []
+            vs = []
             if len(mesh.uv_mapping) > 0:
-                for uv in mesh.uv_mapping:
-                    for num_uvs in uv.coordinates_per_primitive:
-                        us_buffer.append([x[0] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
-                        vs_buffer.append([-x[1] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
-                        start_uv = start_uv + num_uvs
-                    break
-            #generate mesh
+                us = [x[0] for x in mesh.uv_mapping[0].coordinates]
+                vs = [-x[1] for x in mesh.uv_mapping[0].coordinates]
             selection = OpenMaya.MSelectionList()
-            for primitive_id in range(len(mesh.polygons.polygons_per_primitive)):
-                new_mesh = OpenMaya.MFnMesh()
-                us = us_buffer[primitive_id] if len(mesh.uv_mapping) > 0 else []
-                vs = vs_buffer[primitive_id] if len(mesh.uv_mapping) > 0 else []
-                new_mesh.create(vertex_buffers[primitive_id], num_points[primitive_id], index_buffers[primitive_id], us, vs)
-                if len(mesh.uv_mapping) > 0:
-                    for face_id in range(int(len(index_buffers[primitive_id]) / 3)):
-                        new_mesh.assignUV(face_id, 0, index_buffers[primitive_id][face_id * 3 + 0])
-                        new_mesh.assignUV(face_id, 1, index_buffers[primitive_id][face_id * 3 + 1])
-                        new_mesh.assignUV(face_id, 2, index_buffers[primitive_id][face_id * 3 + 2])
-                new_mesh.updateSurface()
-                #materials
-                if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
-                    OpenMaya.MGlobal.setActiveSelectionList(OpenMaya.MSelectionList().add(new_mesh.getPath()))
-                    mc.hyperShade(assign = mesh.polygon_material.name[primitive_id])
-                selection.add(new_mesh.getPath())
-            #transform
+            new_mesh = OpenMaya.MFnMesh()
+            new_mesh.create(vertices, num_points, indices, us, vs)
+            if len(mesh.uv_mapping) > 0:
+                uv_mapping = mesh.uv_mapping[0]
+                for face_id in range(len(uv_mapping.polygons_uv_indices)):
+                    polygons_uvs = uv_mapping.polygons_uv_indices[face_id]
+                    for vertex_id in range(len(polygons_uvs.uv_index)):
+                        new_mesh.assignUV(face_id, vertex_id, polygons_uvs.uv_index[vertex_id])
+            new_mesh.updateSurface()
+            if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
+                for polygon_id in range(len(mesh.polygon_material.material_index_for_polygon)):
+                    mc.select('%s.f[%i]' % (new_mesh.name(), polygon_id))
+                    mc.hyperShade(assign = mesh.polygon_material.name[mesh.polygon_material.material_index_for_polygon[polygon_id]])
+            selection.add(new_mesh.getPath())
             OpenMaya.MGlobal.setActiveSelectionList(selection)
             if selection.length() > 1:
                 transform_node = mc.polyUnite(constructionHistory = False)[0]
@@ -246,18 +223,19 @@ class KF2ImportDialog(KF2ImportDialogUI):
             mc.setAttr(transform_node + '.mp_node_name', mesh.node.name, type = "string")
             mesh_node_name = mc.rename(transform_node, mesh.node.name)
             meshes[mesh.node.name] = mesh_node_name
+            transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
+            tr = transform.translation(OpenMaya.MSpace.kTransform)
+            ro = transform.rotation(asQuaternion = False)
+            s = transform.scale(OpenMaya.MSpace.kWorld)
             mc.move(-tr[0], tr[1], tr[2], mesh_node_name, absolute=True)
             mc.rotate(ro[0] * (180 / math.pi), -ro[1] * (180 / math.pi), -ro[2] * (180 / math.pi), mesh_node_name, absolute=True)
             mc.scale(s[0], s[1], s[2], mesh_node_name, absolute=True)
             if mesh.node.has_parent:
                 mc.parent(mesh_node_name, meshes[mesh.node.parent_name])
-
-        #, absolute = True
-        #new_mesh.assignUVs(poly_num_points, poly_uv_indices)
         #for poly_id, normal_vertex in normals_per_poly.items():
         #    for element in normal_vertex:
         #       new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
-        #mc.hyperShade(assign = self.materials.getMaterialNameById(material_id))
+
     def importCamera(self):
         pass
 
