@@ -268,12 +268,15 @@ class KF2ImportDialog(KF2ImportDialogUI):
             for bone_dag in skin_fn.influenceObjects():
                 skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
 
-            influences = []
-            weights = []
+            zero_weights = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+            zero_influences = OpenMaya.MIntArray([x for x in range(len(skin_id_to_cluster_id.values()))])
+
+            influences = {}
+            weights = {}
             for skin_vertex in skin.skin_vertices:
                 bones_set = {*skin_vertex.vertex_bone_indices}
-                influences.append(OpenMaya.MIntArray())
-                weights.append(OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))]))
+                influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
+                weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
                 for bone_index in skin_vertex.vertex_bone_indices:
                     influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
                 for i in range(len(skin_vertex.vertex_weights)):
@@ -283,7 +286,10 @@ class KF2ImportDialog(KF2ImportDialogUI):
                         influences[skin_vertex.vertex_index].append(i)
 
             for component in OpenMaya.MItGeometry(skin_object_dag):
-                skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+                if component.index() not in influences:
+                    skin_fn.setWeights(skin_object_dag, component.currentItem(), zero_influences, zero_weights, normalize = False, returnOldWeights = False)
+                else:
+                    skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
 
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:
