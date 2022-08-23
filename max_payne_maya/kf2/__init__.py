@@ -14,7 +14,7 @@ class KF2ImportDialogUI(QtWidgets.QDialog):
         maya_window_ptr = omui.MQtUtil.mainWindow()
         parent = wrapInstance(int(maya_window_ptr), QtWidgets.QWidget)
         super(KF2ImportDialogUI, self).__init__(parent)
-        self.setWindowTitle("Max Payne KF2 Importer")
+        self.setWindowTitle("Max Payne KF2 KFS SKD Importer")
         self.resize(600, 500)
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.mainLayout.setContentsMargins(10, 10, 10, 10)
@@ -123,9 +123,58 @@ class KF2ImportDialog(KF2ImportDialogUI):
         self.kf2 = kf2
         super().__init__()
 
+    def convertMatrix(self, m):
+        t = OpenMaya.MTransformationMatrix(OpenMaya.MMatrix([
+            m[0] + [0.0],
+            m[1] + [0.0],
+            m[2] + [0.0],
+            m[3] + [1.0]
+        ]))
+
+        tr = t.translation(OpenMaya.MSpace.kWorld)
+        t.setTranslation(OpenMaya.MVector(- tr[0] * 100.0, tr[1] * 100.0, tr[2] * 100.0), OpenMaya.MSpace.kWorld)
+
+        ro = t.rotation(asQuaternion = True)
+        ro = OpenMaya.MQuaternion(ro.x, - ro.y, - ro.z, ro.w)
+        t.setRotation(ro)
+
+        s = t.scale(OpenMaya.MSpace.kWorld)
+        t.setScale([s[0], s[1], s[2]], OpenMaya.MSpace.kTransform)
+
+        return t.asMatrix()
+
+    def createJoint(self, n, p, r, pj = ""):
+        if pj != "":
+            joint = mc.joint(pj, n = n, position = (p[0], p[1], p[2]), ax = r[0] * (180 / math.pi), ay = r[1] * (180 / math.pi), az = r[2] * (180 / math.pi), r=True)
+        else:
+            joint = mc.joint(n = n, position = (p[0], p[1], p[2]), ax = r[0] * (180 / math.pi), ay = r[1] * (180 / math.pi), az = r[2] * (180 / math.pi), r=True)
+        mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso = True)
+        return joint
+
+    def importSkeleton2(self):
+        joints = []
+        transforms = []
+        for mesh in self.kf2.getMeshes():
+            mc.select(clear = True)
+            t = OpenMaya.MTransformationMatrix(self.convertMatrix(mesh.node.object_to_parent_transform))
+            tr = t.translation(OpenMaya.MSpace.kWorld)
+            ro = t.rotation(asQuaternion = False)
+            parent = ""
+            if mesh.node.has_parent:
+                for i in joints:
+                    if mc.getAttr(i + '.mp_node_name', asString = True) == mesh.node.parent_name:
+                        parent = i
+                        break
+            joint = self.createJoint(mesh.node.name, tr, ro, parent)
+            mc.addAttr(joint, longName = 'mp_node_name', storable = True, dataType = 'string')
+            mc.setAttr(joint + '.mp_node_name', mesh.node.name, type="string")
+            joints.append(joint)
+        self.accept()
+
     def importSkeleton(self):
         joints = []
         nodes = {}
+
         for mesh in self.kf2.getMeshes():
             matrix4x4 = OpenMaya.MMatrix([
                 mesh.node.object_to_parent_transform[0] + [0.0],
@@ -141,18 +190,25 @@ class KF2ImportDialog(KF2ImportDialogUI):
         for mesh in self.kf2.getMeshes():
             mc.select(clear = True)
             joint = None
+
             transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
             tr = transform.translation(OpenMaya.MSpace.kTransform)
             ro = transform.rotation(asQuaternion=False)
             if mesh.node.has_parent:
                 for i in joints:
                     if mc.getAttr(i + '.mp_node_name', asString = True) == mesh.node.parent_name:
-                        joint = mc.joint(i, n = mesh.node.name, position = (-tr[0], tr[1], tr[2]), ax = ro[0] * (180/math.pi), ay = - ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
+                        joint = mc.joint(i, n = mesh.node.name, position = (-tr[0], tr[1], tr[2]))
+                        mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso=True)
+                        mc.joint(joint, e = True, ax = ro[0] * (180/math.pi), ay = - ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
                         break
             else:
-                joint = mc.joint(n = mesh.node.name, position = (-tr[0], tr[1], tr[2]), ax = ro[0] * (180/math.pi), ay = -ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
+                joint = mc.joint(n = mesh.node.name, position = (-tr[0], tr[1], tr[2]))
+                mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso=True)
+                mc.joint(joint, e = True, ax = ro[0] * (180 / math.pi), ay = - ro[1] * (180 / math.pi), az = -ro[2] * (180 / math.pi))
+
             mc.addAttr(joint, longName = 'mp_node_name', storable = True, dataType = 'string')
             mc.setAttr(joint + '.mp_node_name', mesh.node.name, type="string")
+
             joints.append(joint)
         self.accept()
 
@@ -188,55 +244,32 @@ class KF2ImportDialog(KF2ImportDialogUI):
 
         meshes = {}
         for mesh in self.kf2.getMeshes():
+            if mesh.geometry is None or mesh.polygons is None:
+                continue
             mc.select(clear = True)
-            transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
-            tr = transform.translation(OpenMaya.MSpace.kTransform)
-            ro = transform.rotation(asQuaternion = False)
-            s = transform.scale(OpenMaya.MSpace.kWorld)
-            #vertices
-            vertex_buffers = []
-            start_vertex = 0
-            for num_vertices in mesh.geometry.vertices_per_primitive:
-                vertex_buffers.append([OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0) for x in mesh.geometry.vertices[start_vertex:start_vertex + num_vertices]])
-                start_vertex = start_vertex + num_vertices
-            #indices
-            start_index = 0
-            index_buffers = []
-            num_points = []
-            for num_indices in mesh.polygons.polygons_per_primitive:
-                index_buffers.append(mesh.polygons.polygons_indices[start_index:start_index + num_indices * 3])
-                num_points.append([3 for x in range(num_indices)])
-                start_index = start_index + num_indices * 3
-            #uvs
-            start_uv = 0
-            us_buffer = []
-            vs_buffer = []
+            vertices = [OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0) for x in mesh.geometry.vertices]
+            indices = mesh.polygons.polygons_indices
+            num_points = [3 for x in range(int(len(mesh.polygons.polygons_indices) / 3))]
+            us = []
+            vs = []
             if len(mesh.uv_mapping) > 0:
-                for uv in mesh.uv_mapping:
-                    for num_uvs in uv.coordinates_per_primitive:
-                        us_buffer.append([x[0] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
-                        vs_buffer.append([-x[1] for x in uv.coordinates[start_uv:start_uv + num_uvs]])
-                        start_uv = start_uv + num_uvs
-                    break
-            #generate mesh
+                us = [x[0] for x in mesh.uv_mapping[0].coordinates]
+                vs = [-x[1] for x in mesh.uv_mapping[0].coordinates]
             selection = OpenMaya.MSelectionList()
-            for primitive_id in range(len(mesh.polygons.polygons_per_primitive)):
-                new_mesh = OpenMaya.MFnMesh()
-                us = us_buffer[primitive_id] if len(mesh.uv_mapping) > 0 else []
-                vs = vs_buffer[primitive_id] if len(mesh.uv_mapping) > 0 else []
-                new_mesh.create(vertex_buffers[primitive_id], num_points[primitive_id], index_buffers[primitive_id], us, vs)
-                if len(mesh.uv_mapping) > 0:
-                    for face_id in range(int(len(index_buffers[primitive_id]) / 3)):
-                        new_mesh.assignUV(face_id, 0, index_buffers[primitive_id][face_id * 3 + 0])
-                        new_mesh.assignUV(face_id, 1, index_buffers[primitive_id][face_id * 3 + 1])
-                        new_mesh.assignUV(face_id, 2, index_buffers[primitive_id][face_id * 3 + 2])
-                new_mesh.updateSurface()
-                #materials
-                if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
-                    OpenMaya.MGlobal.setActiveSelectionList(OpenMaya.MSelectionList().add(new_mesh.getPath()))
-                    mc.hyperShade(assign = mesh.polygon_material.name[primitive_id])
-                selection.add(new_mesh.getPath())
-            #transform
+            new_mesh = OpenMaya.MFnMesh()
+            new_mesh.create(vertices, num_points, indices, us, vs)
+            if len(mesh.uv_mapping) > 0:
+                uv_mapping = mesh.uv_mapping[0]
+                for face_id in range(len(uv_mapping.polygons_uv_indices)):
+                    polygons_uvs = uv_mapping.polygons_uv_indices[face_id]
+                    for vertex_id in range(len(polygons_uvs.uv_index)):
+                        new_mesh.assignUV(face_id, vertex_id, polygons_uvs.uv_index[vertex_id])
+            new_mesh.updateSurface()
+            if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
+                for polygon_id in range(len(mesh.polygon_material.material_index_for_polygon)):
+                    mc.select('%s.f[%i]' % (new_mesh.name(), polygon_id))
+                    mc.hyperShade(assign = mesh.polygon_material.name[mesh.polygon_material.material_index_for_polygon[polygon_id]])
+            selection.add(new_mesh.getPath())
             OpenMaya.MGlobal.setActiveSelectionList(selection)
             if selection.length() > 1:
                 transform_node = mc.polyUnite(constructionHistory = False)[0]
@@ -246,23 +279,52 @@ class KF2ImportDialog(KF2ImportDialogUI):
             mc.setAttr(transform_node + '.mp_node_name', mesh.node.name, type = "string")
             mesh_node_name = mc.rename(transform_node, mesh.node.name)
             meshes[mesh.node.name] = mesh_node_name
+            transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
+            tr = transform.translation(OpenMaya.MSpace.kTransform)
+            ro = transform.rotation(asQuaternion = False)
+            s = transform.scale(OpenMaya.MSpace.kWorld)
             mc.move(-tr[0], tr[1], tr[2], mesh_node_name, absolute=True)
             mc.rotate(ro[0] * (180 / math.pi), -ro[1] * (180 / math.pi), -ro[2] * (180 / math.pi), mesh_node_name, absolute=True)
             mc.scale(s[0], s[1], s[2], mesh_node_name, absolute=True)
             if mesh.node.has_parent:
                 mc.parent(mesh_node_name, meshes[mesh.node.parent_name])
 
-        #, absolute = True
-        #new_mesh.assignUVs(poly_num_points, poly_uv_indices)
-        #for poly_id, normal_vertex in normals_per_poly.items():
-        #    for element in normal_vertex:
-        #       new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
-        #mc.hyperShade(assign = self.materials.getMaterialNameById(material_id))
     def importCamera(self):
         pass
 
     def importAnimation(self):
-        pass
+        mp_node_names = mc.ls("*.mp_node_name", o = True)
+        animation_object_to_node = {}
+        for animation in self.kf2.getKeyframeAnimations():
+            animation_object = None
+            for mp_node_name in mp_node_names:
+                if animation.animation.object_name.lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
+                    animation_object = mp_node_name
+                    animation_object_to_node[animation.animation.object_name.lower()] = mp_node_name
+                    break
+            if animation_object is None:
+                continue
+
+            for keyframe in animation.keyframes:
+                mc.currentTime(keyframe.frame_id)
+                m = self.convertMatrix(keyframe.transform)
+                if animation.parent_name != "":
+                    m = m * OpenMaya.MMatrix(
+                        mc.xform(animation_object_to_node[animation.parent_name.lower()], m = True, q = True,  ws = True))
+                t = OpenMaya.MTransformationMatrix(m)
+                tr = t.translation(OpenMaya.MSpace.kWorld)
+                ro = t.rotation(asQuaternion = False)
+                mc.move(tr[0], tr[1], tr[2], animation_object, ws = True)
+                mc.rotate(ro[0] * 180 / math.pi, ro[1] * 180 / math.pi, ro[2] * 180 / math.pi, animation_object, ws = True)
+                mc.setKeyframe(animation_object, at = "translationX", ott = "step")
+                mc.setKeyframe(animation_object, at = "translationY", ott = "step")
+                mc.setKeyframe(animation_object, at = "translationZ", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateX", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateY", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateZ", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleX", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleY", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleZ", ott = "step")
 
     def importSkin(self):
         mp_node_names = mc.ls("*.mp_node_name", o=True)
@@ -280,7 +342,6 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 if skin.skin_object_names[0].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
                     skin_object_name = mp_node_name
                     break
-            #raise ValueError(skeleton_object_names_dict)
             mc.select(skeleton_object_names)
             mc.select(skin_object_name, add=True)
             skin_cluster_name = mc.skinCluster()
@@ -290,12 +351,15 @@ class KF2ImportDialog(KF2ImportDialogUI):
             for bone_dag in skin_fn.influenceObjects():
                 skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
 
-            influences = []
-            weights = []
+            zero_weights = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+            zero_influences = OpenMaya.MIntArray([x for x in range(len(skin_id_to_cluster_id.values()))])
+
+            influences = {}
+            weights = {}
             for skin_vertex in skin.skin_vertices:
                 bones_set = {*skin_vertex.vertex_bone_indices}
-                influences.append(OpenMaya.MIntArray())
-                weights.append(OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))]))
+                influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
+                weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
                 for bone_index in skin_vertex.vertex_bone_indices:
                     influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
                 for i in range(len(skin_vertex.vertex_weights)):
@@ -305,11 +369,14 @@ class KF2ImportDialog(KF2ImportDialogUI):
                         influences[skin_vertex.vertex_index].append(i)
 
             for component in OpenMaya.MItGeometry(skin_object_dag):
-                skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+                if component.index() not in influences:
+                    skin_fn.setWeights(skin_object_dag, component.currentItem(), zero_influences, zero_weights, normalize = False, returnOldWeights = False)
+                else:
+                    skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
 
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:
-            self.importSkeleton()
+            self.importSkeleton2()
             return
         if self.materialCheckBox.checkState() == QtCore.Qt.Checked:
             self.importMaterial()
@@ -335,22 +402,11 @@ class KF2ImportDialog(KF2ImportDialogUI):
         if not self.kf2.hasSkins():
             self.skinCheckBox.setDisabled(True)
 
-
-
-        if not self.kf2.hasCameras():
-            self.pointLightCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.directionalLightCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.spotLightCheckBox.setDisabled(True)
-
-        if not self.kf2.hasEnvironments():
-            self.environmentCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.helperCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.pointLightAnimationCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.directionalLightAnimationCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.spotLightAnimationCheckBox.setDisabled(True)
+        self.pointLightCheckBox.setDisabled(True)
+        self.directionalLightCheckBox.setDisabled(True)
+        self.spotLightCheckBox.setDisabled(True)
+        self.environmentCheckBox.setDisabled(True)
+        self.helperCheckBox.setDisabled(True)
+        self.pointLightAnimationCheckBox.setDisabled(True)
+        self.directionalLightAnimationCheckBox.setDisabled(True)
+        self.spotLightAnimationCheckBox.setDisabled(True)
