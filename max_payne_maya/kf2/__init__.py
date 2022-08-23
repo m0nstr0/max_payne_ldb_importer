@@ -123,9 +123,58 @@ class KF2ImportDialog(KF2ImportDialogUI):
         self.kf2 = kf2
         super().__init__()
 
+    def convertMatrix(self, m):
+        t = OpenMaya.MTransformationMatrix(OpenMaya.MMatrix([
+            m[0] + [0.0],
+            m[1] + [0.0],
+            m[2] + [0.0],
+            m[3] + [1.0]
+        ]))
+
+        tr = t.translation(OpenMaya.MSpace.kWorld)
+        t.setTranslation(OpenMaya.MVector(- tr[0] * 100.0, tr[1] * 100.0, tr[2] * 100.0), OpenMaya.MSpace.kWorld)
+
+        ro = t.rotation(asQuaternion = True)
+        ro = OpenMaya.MQuaternion(ro.x, - ro.y, - ro.z, ro.w)
+        t.setRotation(ro)
+
+        s = t.scale(OpenMaya.MSpace.kWorld)
+        t.setScale([s[0], s[1], s[2]], OpenMaya.MSpace.kTransform)
+
+        return t.asMatrix()
+
+    def createJoint(self, n, p, r, pj = ""):
+        if pj != "":
+            joint = mc.joint(pj, n = n, position = (p[0], p[1], p[2]), ax = r[0] * (180 / math.pi), ay = r[1] * (180 / math.pi), az = r[2] * (180 / math.pi), r=True)
+        else:
+            joint = mc.joint(n = n, position = (p[0], p[1], p[2]), ax = r[0] * (180 / math.pi), ay = r[1] * (180 / math.pi), az = r[2] * (180 / math.pi), r=True)
+        mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso = True)
+        return joint
+
+    def importSkeleton2(self):
+        joints = []
+        transforms = []
+        for mesh in self.kf2.getMeshes():
+            mc.select(clear = True)
+            t = OpenMaya.MTransformationMatrix(self.convertMatrix(mesh.node.object_to_parent_transform))
+            tr = t.translation(OpenMaya.MSpace.kWorld)
+            ro = t.rotation(asQuaternion = False)
+            parent = ""
+            if mesh.node.has_parent:
+                for i in joints:
+                    if mc.getAttr(i + '.mp_node_name', asString = True) == mesh.node.parent_name:
+                        parent = i
+                        break
+            joint = self.createJoint(mesh.node.name, tr, ro, parent)
+            mc.addAttr(joint, longName = 'mp_node_name', storable = True, dataType = 'string')
+            mc.setAttr(joint + '.mp_node_name', mesh.node.name, type="string")
+            joints.append(joint)
+        self.accept()
+
     def importSkeleton(self):
         joints = []
         nodes = {}
+
         for mesh in self.kf2.getMeshes():
             matrix4x4 = OpenMaya.MMatrix([
                 mesh.node.object_to_parent_transform[0] + [0.0],
@@ -141,18 +190,25 @@ class KF2ImportDialog(KF2ImportDialogUI):
         for mesh in self.kf2.getMeshes():
             mc.select(clear = True)
             joint = None
+
             transform = OpenMaya.MTransformationMatrix(nodes[mesh.node.name])
             tr = transform.translation(OpenMaya.MSpace.kTransform)
             ro = transform.rotation(asQuaternion=False)
             if mesh.node.has_parent:
                 for i in joints:
                     if mc.getAttr(i + '.mp_node_name', asString = True) == mesh.node.parent_name:
-                        joint = mc.joint(i, n = mesh.node.name, position = (-tr[0], tr[1], tr[2]), ax = ro[0] * (180/math.pi), ay = - ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
+                        joint = mc.joint(i, n = mesh.node.name, position = (-tr[0], tr[1], tr[2]))
+                        mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso=True)
+                        mc.joint(joint, e = True, ax = ro[0] * (180/math.pi), ay = - ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
                         break
             else:
-                joint = mc.joint(n = mesh.node.name, position = (-tr[0], tr[1], tr[2]), ax = ro[0] * (180/math.pi), ay = -ro[1] * (180/math.pi), az = -ro[2] * (180/math.pi))
+                joint = mc.joint(n = mesh.node.name, position = (-tr[0], tr[1], tr[2]))
+                mc.joint(joint, e = True, oj = "xyz", sao = "yup", zso=True)
+                mc.joint(joint, e = True, ax = ro[0] * (180 / math.pi), ay = - ro[1] * (180 / math.pi), az = -ro[2] * (180 / math.pi))
+
             mc.addAttr(joint, longName = 'mp_node_name', storable = True, dataType = 'string')
             mc.setAttr(joint + '.mp_node_name', mesh.node.name, type="string")
+
             joints.append(joint)
         self.accept()
 
@@ -232,15 +288,43 @@ class KF2ImportDialog(KF2ImportDialogUI):
             mc.scale(s[0], s[1], s[2], mesh_node_name, absolute=True)
             if mesh.node.has_parent:
                 mc.parent(mesh_node_name, meshes[mesh.node.parent_name])
-        #for poly_id, normal_vertex in normals_per_poly.items():
-        #    for element in normal_vertex:
-        #       new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
 
     def importCamera(self):
         pass
 
     def importAnimation(self):
-        pass
+        mp_node_names = mc.ls("*.mp_node_name", o = True)
+        animation_object_to_node = {}
+        for animation in self.kf2.getKeyframeAnimations():
+            animation_object = None
+            for mp_node_name in mp_node_names:
+                if animation.animation.object_name.lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
+                    animation_object = mp_node_name
+                    animation_object_to_node[animation.animation.object_name.lower()] = mp_node_name
+                    break
+            if animation_object is None:
+                continue
+
+            for keyframe in animation.keyframes:
+                mc.currentTime(keyframe.frame_id)
+                m = self.convertMatrix(keyframe.transform)
+                if animation.parent_name != "":
+                    m = m * OpenMaya.MMatrix(
+                        mc.xform(animation_object_to_node[animation.parent_name.lower()], m = True, q = True,  ws = True))
+                t = OpenMaya.MTransformationMatrix(m)
+                tr = t.translation(OpenMaya.MSpace.kWorld)
+                ro = t.rotation(asQuaternion = False)
+                mc.move(tr[0], tr[1], tr[2], animation_object, ws = True)
+                mc.rotate(ro[0] * 180 / math.pi, ro[1] * 180 / math.pi, ro[2] * 180 / math.pi, animation_object, ws = True)
+                mc.setKeyframe(animation_object, at = "translationX", ott = "step")
+                mc.setKeyframe(animation_object, at = "translationY", ott = "step")
+                mc.setKeyframe(animation_object, at = "translationZ", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateX", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateY", ott = "step")
+                mc.setKeyframe(animation_object, at = "rotateZ", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleX", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleY", ott = "step")
+                mc.setKeyframe(animation_object, at = "scaleZ", ott = "step")
 
     def importSkin(self):
         mp_node_names = mc.ls("*.mp_node_name", o=True)
@@ -258,7 +342,6 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 if skin.skin_object_names[0].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
                     skin_object_name = mp_node_name
                     break
-            #raise ValueError(skeleton_object_names_dict)
             mc.select(skeleton_object_names)
             mc.select(skin_object_name, add=True)
             skin_cluster_name = mc.skinCluster()
@@ -293,7 +376,7 @@ class KF2ImportDialog(KF2ImportDialogUI):
 
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:
-            self.importSkeleton()
+            self.importSkeleton2()
             return
         if self.materialCheckBox.checkState() == QtCore.Qt.Checked:
             self.importMaterial()
@@ -319,22 +402,11 @@ class KF2ImportDialog(KF2ImportDialogUI):
         if not self.kf2.hasSkins():
             self.skinCheckBox.setDisabled(True)
 
-
-
-        if not self.kf2.hasCameras():
-            self.pointLightCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.directionalLightCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.spotLightCheckBox.setDisabled(True)
-
-        if not self.kf2.hasEnvironments():
-            self.environmentCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.helperCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.pointLightAnimationCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.directionalLightAnimationCheckBox.setDisabled(True)
-        if not self.kf2.hasCameras():
-            self.spotLightAnimationCheckBox.setDisabled(True)
+        self.pointLightCheckBox.setDisabled(True)
+        self.directionalLightCheckBox.setDisabled(True)
+        self.spotLightCheckBox.setDisabled(True)
+        self.environmentCheckBox.setDisabled(True)
+        self.helperCheckBox.setDisabled(True)
+        self.pointLightAnimationCheckBox.setDisabled(True)
+        self.directionalLightAnimationCheckBox.setDisabled(True)
+        self.spotLightAnimationCheckBox.setDisabled(True)
