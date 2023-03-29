@@ -79,4 +79,38 @@ class MeshChunkReader(kf2_reader.KF2ReaderBase):
             if self.polygon_material is not None:
                 self.polygon_material.material_index_for_polygon = material_index_for_polygon
 
+        if kf2_chunk.version == 1 and self.geometry is not None and self.polygons is not None:
+            #calc normals
+            face_normals = [[0.0, 0.0, 0.0] for i in range(int(len(self.polygons.polygons_indices) / 3))]
+            self.geometry.normals = [[0.0, 0.0, 0.0] for i in range(len(self.geometry.vertices))]
+
+            start_index = 0
+            for polygon_id in range(int(len(self.polygons.polygons_indices) / 3)):
+                v0 = self.geometry.vertices[self.polygons.polygons_indices[start_index + 0]]
+                v1 = self.geometry.vertices[self.polygons.polygons_indices[start_index + 1]]
+                v2 = self.geometry.vertices[self.polygons.polygons_indices[start_index + 2]]
+                start_index += 3
+
+                v01 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]]
+                v12 = [v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]]
+                fn = [v01[1] * v12[2] - v01[2] * v12[1], v01[0] * v12[2] - v01[2] * v12[0], v01[0] * v12[1] - v01[1] * v12[0]]
+                fnl = math.sqrt((fn[0] * fn[0]) + (fn[1] * fn[1]) + (fn[2] * fn[2]))
+                face_normals[polygon_id] = [fn[0] / fnl, fn[1] / fnl, fn[2] / fnl]
+
+
+            #for primitive_id in range(len(self.polygons.polygons_per_primitive)):
+            #    for polygon_id in range(self.polygons.polygons_per_primitive[primitive_id]):
+            #        vertex_a = self.polygons.polygons_indices[start_index + 0] + vertex_start_index[primitive_id]
+            #        vertex_b = self.polygons.polygons_indices[start_index + 1] + vertex_start_index[primitive_id]
+            #        vertex_c = self.polygons.polygons_indices[start_index + 2] + vertex_start_index[primitive_id]
+            #        polygons_indices.append(vertex_a)
+            #        polygons_indices.append(vertex_b)
+            #        polygons_indices.append(vertex_c)
+            #        material_index_for_polygon[int(start_index / 3)] = primitive_id
+            #        polygons_uv_indices.append(kf2_type.PolygonUVIndex([vertex_a, vertex_b, vertex_c]))
+            #        start_index += 3
+
+            #if self.smoothing is not None:
+
+
         return kf2_type.Mesh(kf2_chunk.version, self.node, self.geometry, self.polygons, self.polygon_material, self.uv_mapping, self.reference_to_data, self.smoothing)

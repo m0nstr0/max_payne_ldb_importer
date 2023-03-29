@@ -248,7 +248,15 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 continue
             mc.select(clear = True)
             vertices = [OpenMaya.MFloatPoint(-x[0] * 100.0, x[1] * 100.0, x[2] * 100.0) for x in mesh.geometry.vertices]
-            indices = mesh.polygons.polygons_indices
+
+            start_idx = 0
+            indices = []
+            for ind in range(int(len(mesh.polygons.polygons_indices) / 3)):
+                indices.append(mesh.polygons.polygons_indices[start_idx + 0])
+                indices.append(mesh.polygons.polygons_indices[start_idx + 2])
+                indices.append(mesh.polygons.polygons_indices[start_idx + 1])
+                start_idx += 3
+
             num_points = [3 for x in range(int(len(mesh.polygons.polygons_indices) / 3))]
             us = []
             vs = []

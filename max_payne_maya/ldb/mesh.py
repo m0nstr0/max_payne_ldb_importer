@@ -11,78 +11,51 @@ class MayaLDBMeshlOps:
         self.progress_callback = progress_callback
         self.processGeometry()
 
-    def generateUniqVerticesList(self, vertices, normals, uniq_vertices, poly_indices, poly_num_points, normals_per_poly):
-        poly_num_points.append(len(vertices))
-        for i in range(len(vertices)):
-            found = False
-            for j in range(len(uniq_vertices)):
-                if not math.isclose(uniq_vertices[j].x, -vertices[i].x * 100.0):
-                    continue
-                if not math.isclose(uniq_vertices[j].y, vertices[i].y * 100.0):
-                    continue
-                if not math.isclose(uniq_vertices[j].z, vertices[i].z * 100.0):
-                    continue
-                found = True
-                poly_indices.append(j)
-                break
-            if not found:
-                uniq_vertices.append(OpenMaya.MFloatPoint(-vertices[i].x * 100.0, vertices[i].y * 100.0, vertices[i].z * 100.0))
-                poly_indices.append(len(uniq_vertices) - 1)
-            normals_per_poly.append([poly_indices[-1], OpenMaya.MVector(-normals[i].x, normals[i].y, normals[i].z)])
-
-    def generateUniqUVList(self, uvs, us, vs, poly_uv_indices):
-        for uv in uvs:
-            found = False
-            for j in range(len(us)):
-                if not math.isclose(us[j], uv.u):
-                    continue
-                if not math.isclose(vs[j], 1.0 - uv.v):
-                    continue
-                found = True
-                poly_uv_indices.append(j)
-                break
-            if not found:
-                us.append(uv.u)
-                vs.append(1.0 - uv.v)
-                poly_uv_indices.append(len(us) - 1)
-
     def createPolygons(self, mesh):
-        group_up = OpenMaya.MSelectionList()
-        grouped_by_materials = {}
+        vertices = []
+        normals = []
+        indices = []
+        vertices_per_poly = []
+        materials = {}
+        us = []
+        vs = []
+        uvs = []
         for polygon_idx in range(mesh.numPolygons()):
-            geometry = mesh.constructPolygon(polygon_idx)
-            if geometry.material.id in grouped_by_materials:
-                grouped_by_materials[geometry.material.id].append(geometry)
-            else:
-                grouped_by_materials[geometry.material.id] = [geometry]
-        for material_id, geometries in grouped_by_materials.items():
-            selection = OpenMaya.MSelectionList()
-            poly_id = -1
-            normals_per_poly = {}
-            uniq_vertices = []
+            if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
+                break
+            polygon = mesh.polygons.polygons[polygon_idx]
             poly_indices = []
-            poly_num_points = []
-            us = []
-            vs = []
-            poly_uv_indices = []
-            for geometry in geometries:
-                if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
-                    break
-                poly_id = poly_id + 1
-                normals_per_poly[poly_id] = []
-                self.generateUniqVerticesList(geometry.vertices, geometry.normals, uniq_vertices, poly_indices, poly_num_points, normals_per_poly[poly_id])
-                self.generateUniqUVList(geometry.uv, us, vs, poly_uv_indices)
-            new_mesh = OpenMaya.MFnMesh()
-            new_mesh.create(uniq_vertices, poly_num_points, poly_indices, us, vs)
-            new_mesh.assignUVs(poly_num_points, poly_uv_indices)
-            for poly_id, normal_vertex in normals_per_poly.items():
-                for element in normal_vertex:
-                    new_mesh.setFaceVertexNormal(element[1], poly_id, element[0])
-            selection.add(new_mesh.getPath())
-            OpenMaya.MGlobal.setActiveSelectionList(selection)
-            mc.hyperShade(assign=self.materials.getMaterialNameById(material_id))
-            new_mesh.updateSurface()       
-            group_up.add(new_mesh.getPath())
+            start_vertex = len(vertices)
+            for i in range(polygon.num_vertices):
+                texture_vertex = mesh.texture_vertices.texture_vertices[polygon.texture_vertex_idx + i]
+                vertex = mesh.vertices.vertices[texture_vertex.vertex_idx]
+                normal = mesh.normals.vertices[texture_vertex.vertex_idx]
+                vertices.append(OpenMaya.MFloatPoint(-vertex.x * 100.0, vertex.y * 100.0, vertex.z * 100.0))
+                normals.append(OpenMaya.MVector(-normal.x, normal.y, normal.z))
+                us.append(texture_vertex.uv.u)
+                vs.append(1 - texture_vertex.uv.v)
+                poly_indices.append(start_vertex + i)
+            if polygon.material.id in materials:
+                materials[polygon.material.id].append(polygon_idx)
+            else:
+                materials[polygon.material.id] = [polygon_idx]
+            poly_indices[1:] = poly_indices[len(poly_indices):0:-1]
+            indices = indices + poly_indices
+            vertices_per_poly.append(len(poly_indices))
+
+        new_mesh = OpenMaya.MFnMesh()
+        new_mesh.create(vertices, vertices_per_poly, indices, us, vs)
+        new_mesh.setVertexNormals(normals, range(len(vertices)))
+        new_mesh.assignUVs(vertices_per_poly, indices)
+        for material_id, polygons in materials.items():
+            mc.select(clear = True)
+            for polygon_id in polygons:
+                mc.select('%s.f[%i]' % (new_mesh.name(), polygon_id), add = True)
+            mc.hyperShade(assign = self.materials.getMaterialNameById(material_id))
+        new_mesh.updateSurface()
+
+        group_up = OpenMaya.MSelectionList()
+        group_up.add(new_mesh.getPath())
         return group_up
 
     def groupAndTransform(self, group_up, transfrom):
