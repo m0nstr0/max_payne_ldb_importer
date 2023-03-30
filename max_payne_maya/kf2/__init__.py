@@ -262,7 +262,8 @@ class KF2ImportDialog(KF2ImportDialogUI):
             vs = []
             if len(mesh.uv_mapping) > 0:
                 us = [x[0] for x in mesh.uv_mapping[0].coordinates]
-                vs = [-x[1] for x in mesh.uv_mapping[0].coordinates]
+                vs = [1-x[1] for x in mesh.uv_mapping[0].coordinates]
+
             selection = OpenMaya.MSelectionList()
             new_mesh = OpenMaya.MFnMesh()
             new_mesh.create(vertices, num_points, indices, us, vs)
@@ -270,8 +271,10 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 uv_mapping = mesh.uv_mapping[0]
                 for face_id in range(len(uv_mapping.polygons_uv_indices)):
                     polygons_uvs = uv_mapping.polygons_uv_indices[face_id]
-                    for vertex_id in range(len(polygons_uvs.uv_index)):
-                        new_mesh.assignUV(face_id, vertex_id, polygons_uvs.uv_index[vertex_id])
+                    #for vertex_id in range(len(polygons_uvs.uv_index)):
+                    new_mesh.assignUV(face_id, 0, polygons_uvs.uv_index[0])
+                    new_mesh.assignUV(face_id, 1, polygons_uvs.uv_index[2])
+                    new_mesh.assignUV(face_id, 2, polygons_uvs.uv_index[1])
             new_mesh.updateSurface()
             if mesh.polygon_material is not None and len(mesh.polygon_material.name) > 0:
                 for polygon_id in range(len(mesh.polygon_material.material_index_for_polygon)):
