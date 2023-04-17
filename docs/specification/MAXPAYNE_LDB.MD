@@ -26,8 +26,10 @@ The file has the following structure:
 
 ```
     [BSP]
+    [File Version]
     [Materials]
     [Exits]
+    [Texture Vertices Pool]
     [Static Meshes]
     [Dynamic Lights]
     [Waypoints]
@@ -104,7 +106,7 @@ struct {
 } BSPPolygonIndex;
 ```
 
-### Materials
+### File Version
 
 1. File Version
 
@@ -112,7 +114,9 @@ struct {
   M_Int file_version;
 ```
 
-2. Textures List
+### Materials
+
+1. Textures List
 
 ```c
   struct {
@@ -126,7 +130,7 @@ struct {
   } Textures;
 ```
 
-3. Material Categories
+2. Material Categories
 
 ```c
   struct {
@@ -140,7 +144,7 @@ struct {
      } material_category[number_of_categories];
   } MaterialCategories;    
 ```
-4. Material Categories Sorted
+3. Material Categories Sorted
 
 ```c
     struct {
@@ -154,7 +158,7 @@ struct {
        } Categories[number_of_categories];
     } SortedMaterialCategories;
 ```
-5. Material Properties
+4. Material Properties
 
 ```c
   struct {
@@ -173,7 +177,7 @@ struct {
   } MaterailProperties;
 ```
 
-6. Light Maps
+5. Light Maps
 
 ```c
   struct {
@@ -188,6 +192,8 @@ struct {
 ```
 
 ### Exits (Portals)
+
+1. Exits
 
 ```c
   struct {
@@ -213,9 +219,57 @@ struct {
     } Exit[number_of_exits];
   } Exits;
 ```
+### Texture Vertices Pool
+
+1. Texture Vertices Pool
+
+```c
+    struct {
+        unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
+        M_Int number_of_texture_vertices;
+        struct {
+           M_Int vertex_index;
+           M_Vector2 uv;
+           M_Vector2 light_map_uv;
+           M_Unsigned_Int flags;
+           M_Bool is_smooth;
+        } TextureVertex[number_of_texture_vertices]
+    } TextureVertices;
+```
+
+> **vertex_index** points to the vertex from the static mesh or dynamic mesh vertices pool
+
+> **flags** and **is_smooth** fields are using by Max Payne engine to do dynamic tesselation of the geometry
+
+>  **isCrease** 
+> ```c
+>  function IsCrease() -> bool {
+>    return flags >> 0x17 & 0x01
+>  }
+> ```
+
+>  **getNeighbor** 
+> ```c
+>  function getNeighbor() -> unsigned int {
+>    return flags == 0xffffffff ? flags : flags & 0x7fffff
+>  }
+> ```
+
+>  **getNeighborEdge** 
+> ```c
+>  function getNeighborEdge() -> unsigned int {
+>    return flags == 0xffffffff ? flags : flags >> 0x18
+>  }
+> ```
 
 ### Static Meshes
+
+1. Static Meshes
+
 ### Dynamic Lights
+
+1. Dynamic Lights
+
 ### Waypoints
 ### FSM
 ### Characters
