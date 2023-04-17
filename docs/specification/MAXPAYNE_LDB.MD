@@ -49,7 +49,7 @@ BSP block contains vertices, polygons, left half space, right half space etc.
 
 ```c
 struct {
-  int8_t type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
+  unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
   M_Int number_of_vertices;
   M_Vector3 vertices[number_of_vertices];
 } BSPVertices;
@@ -59,7 +59,7 @@ struct {
 
 ```c
 struct {
-  int8_t type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
+  unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
   M_Int number_of_polygons;
   struct {
     M_Int start_bsp_vertex_indx;
@@ -75,7 +75,7 @@ struct {
 
 ```c
 struct {
-  int8_t type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
+  unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
   M_Int number_of_nodes;
   struct {
     M_Vector3 node_transform_or_orientation;
@@ -98,14 +98,122 @@ struct {
 
 ```c
 struct {
-  int8_t type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
+  unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
   M_Int number_of_polygon_indices;
   M_Int indices[number_of_polygon_indices];
 } BSPPolygonIndex;
 ```
 
 ### Materials
-### Exits
+
+1. File Version
+
+```c
+  M_Int file_version;
+```
+
+2. Textures List
+
+```c
+  struct {
+      M_Int number_of_textures;
+      struct {
+          M_String sorce_file_name;
+          M_Unsigned_Int file_type; //0x00 - TGA, 0x02 - SCX, 0x03 - PCX, 0x04 - JPG, 0x05 - DDS
+          M_Int file_size;
+          unsigned byte texture_file_data[file_size];
+      } Texture[number_of_textures];
+  } Textures;
+```
+
+3. Material Categories
+
+```c
+  struct {
+     unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
+     M_Int number_of_categories;
+     struct {
+          M_Int category_id;
+          unsigned byte type_tag; //0x25 - This is Max Payne's custom implementation of the std::pair container 
+          M_String category_name;
+          M_String material_name;
+     } material_category[number_of_categories];
+  } MaterialCategories;    
+```
+4. Material Categories Sorted
+
+```c
+    struct {
+       unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
+       M_Int number_of_categories;
+       struct {
+            unsigned byte type_tag; //0x25 - This is Max Payne's custom implementation of the std::pair container 
+            M_String category_name;
+            M_String material_name;
+            M_Int material_id;
+       } Categories[number_of_categories];
+    } SortedMaterialCategories;
+```
+5. Material Properties
+
+```c
+  struct {
+    M_Int number_of_material_properties;
+      struct {
+        M_String category_name;
+        M_Int number_of_materials_in_category;
+        struct {
+          M_String material_name;
+          M_String diffuse_texture_source_file_name;
+          M_String alpha_texture_source_file_name;
+          M_Bool has_alpha_test;
+          M_Bool has_adult_content;
+        } Material[number_of_materials_in_category];
+    } MaterailProperty[number_of_material_properties];
+  } MaterailProperties;
+```
+
+6. Light Maps
+
+```c
+  struct {
+    M_Int number_of_light_maps;
+    struct {
+      M_Int light_map_id;
+      M_Unsigned_Int file_type; //0x00 - TGA, 0x02 - SCX, 0x03 - PCX, 0x04 - JPG, 0x05 - DDS
+      M_Int file_size;
+      unsigned byte texture_file_data[file_size];
+    } LightMap[number_of_light_maps];
+  } LightMaps;
+```
+
+### Exits (Portals)
+
+```c
+  struct {
+    M_Int number_of_exits;
+    struct {
+      M_String exit_name;
+      M_Unsigned_Int number_of_vertices;
+      M_Vector3 vertices[number_of_vertices];
+      M_Vector3 normal;
+      M_Matrix4x3 transform;
+      M_Int parent_room_id;
+      M_Int destination_room_id;
+      M_String destination_exit_name;
+      struct {
+        unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container
+        M_Int number_of_convex_regions;
+        struct {
+          unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container
+          M_Int number_of_points;
+          M_Int points[number_of_points];
+        } ConvexRegions[number_of_convex_regions];
+      }
+    } Exit[number_of_exits];
+  } Exits;
+```
+
 ### Static Meshes
 ### Dynamic Lights
 ### Waypoints
