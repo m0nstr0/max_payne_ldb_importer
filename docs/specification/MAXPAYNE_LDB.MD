@@ -4,8 +4,10 @@
 
 * [File Structure](#file-structure)
   * [BSP](#bsp)
+  * [File Version](#file-version)
   * [Materials](#materials)
   * [Exits](#exits)
+  * [Texture Vertices Pool](#texture-vertices-pool)
   * [Static Meshes](#static-meshes)
   * [Dynamic Lights](#dynamic-lights)
   * [Waypoints](#waypoints)
@@ -239,7 +241,7 @@ struct {
 
 > **vertex_index** points to the vertex from the static mesh or dynamic mesh vertices pool
 
-> **flags** and **is_smooth** fields are using by Max Payne engine to do dynamic tesselation of the geometry
+> **flags** and **is_smooth** fields are using by Max Payne engine to do runtime tesselation of the geometry
 
 >  **isCrease** 
 > ```c
@@ -248,16 +250,16 @@ struct {
 >  }
 > ```
 
->  **getNeighbor** 
+>  **GetNeighbor** 
 > ```c
->  function getNeighbor() -> unsigned int {
+>  function GetNeighbor() -> unsigned int {
 >    return flags == 0xffffffff ? flags : flags & 0x7fffff
 >  }
 > ```
 
->  **getNeighborEdge** 
+>  **GetNeighborEdge** 
 > ```c
->  function getNeighborEdge() -> unsigned int {
+>  function GetNeighborEdge() -> unsigned int {
 >    return flags == 0xffffffff ? flags : flags >> 0x18
 >  }
 > ```
