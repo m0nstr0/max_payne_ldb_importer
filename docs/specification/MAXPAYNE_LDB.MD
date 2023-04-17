@@ -273,10 +273,33 @@ struct {
 1. Dynamic Lights
 
 ### Waypoints
+
+1. Waypoints
+
 ### FSM
+
+1. FSM
+
 ### Characters
+
+2. Characters
+
 ### Triggers
+
+3. Triggers
+
 ### Dynamic Meshes
+
+4. Dynamic Meshes
+
 ### Items
+
+5. Items
+
 ### Point Lights
+
+7. Point Lights
+
 ### Rooms
+
+8. Rooms
