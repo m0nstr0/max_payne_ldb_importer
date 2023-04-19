@@ -67,10 +67,10 @@
     
 ## File Structure
 
-This file contains different blocks of data (chunks) like mesh, animation, etc. 
-Each block has header contains unique ID. This ID points to the specific data type that the blocks containing. 
+The file contains different blocks of data (chunks) like mesh, animation, etc. 
+Each of the block has a header that contains a unique ID. This ID points to the specific data type that the blocks containing. 
 The algorithm of reading this file is simple:
-1. Read the first 13 bytes from the input file this is the block header (chunk)
+1. Read the first 13 bytes from the input file it is the block header (chunk)
 2. Compare chunk ID with the table below to figure out what kind of data the block contains 
 3. Go to the specific section of this file to continue reading the input file 
 
