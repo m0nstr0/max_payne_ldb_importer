@@ -24,19 +24,25 @@
   
 ## File Structure
 
+This file contains different blocks of data (chunks) like mesh, animation, etc. 
+Each block has header contains unique ID. This ID points to the specific data type that the blocks containing. 
+The algorithm of reading this file is simple:
+1. Read the first 13 bytes from the input file this is the block header (chunk)
+2. Compare chunk ID with the table below to figure out what kind of data the block contains 
+3. Go to the specific section of this file to continue reading the input file 
+
 ## Chunks
 
 ### Chunk format
 
 ```c
-    struct {
-        byte chunk_tag;
-        unsigned int chunk_id;
-        unsigned int chunk_version;
-        unsigned int chunk_size;
-    }
+  struct {
+    byte chunk_tag;
+    unsigned int chunk_id;
+    unsigned int chunk_version;
+    unsigned int chunk_size;
+  }
 ```
-
 * **{chunk_tag}** - constant **0x0C**
 * **{chunk_id}** - type of the data that this chunk contains
 * **{chunk_version}** - version of the data
@@ -46,7 +52,7 @@
 
 | Chunk id   | Data                        |
 |------------|-----------------------------|
-| 0x0001000f | Material List               |
+| 0x0001000F | Material List               |
 | 0x00010005 | Mesh                        |
 | 0x00010014 | Skin                        |
 | 0x00010012 | Keyframe Animation          |
