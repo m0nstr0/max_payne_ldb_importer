@@ -131,7 +131,7 @@ The algorithm of reading this file is simple:
 
 This chunk contains list of directories with [**textures**](#sub-chunk-texture) and [**material sub-chunk**](#sub-chunk-material)
 
-### Material List - version 0
+#### Material List - version 0
 
 ```c
   struct {
@@ -141,7 +141,7 @@ This chunk contains list of directories with [**textures**](#sub-chunk-texture) 
   } Chunk_MaterialListV0;
 ```
 
-## Mesh
+### Mesh
 
 This chunks contains mesh data like polygons, uv, materials etc. 
 
@@ -151,7 +151,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **IMPORTANT:** You can treat this chunk as the skeleton of the mesh, just use [**node sub-chunks**](#sub-chunk-node) as bones
 
-### Mesh - version 1
+#### Mesh - version 1
 
 ```c
   struct {
@@ -165,7 +165,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
   } Chunk_MeshV1;
 ```
 
-### Mesh - version 2
+#### Mesh - version 2
 
 ```c
   struct {
@@ -178,9 +178,9 @@ This chunks contains mesh data like polygons, uv, materials etc.
   } Chunk_MeshV2;
 ```
 
-## Skin
+### Skin
 
-### Skin - version 0
+#### Skin - version 0
 
 ```c
   struct {
@@ -217,7 +217,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
   } Chunk_SkinV0;
 ```
 
-### Skin - version 1
+#### Skin - version 1
 
 ```c
   struct {
@@ -248,9 +248,9 @@ This chunks contains mesh data like polygons, uv, materials etc.
   } Chunk_SkinV1;
 ```
 
-## Keyframe Animation
+### Keyframe Animation
 
-### Keyframe Animation - version 0
+#### Keyframe Animation - version 0
 
 ```c
   struct {
@@ -268,7 +268,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Increase num_total_keyframes by 1
 
-### Keyframe Animation - version 1
+#### Keyframe Animation - version 1
 
 ```c
   struct: inherits_from Chunk_KeyframeAnimationV0 {
@@ -282,7 +282,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Increase num_total_keyframes by 1
 
-### Keyframe Animation - version 2
+#### Keyframe Animation - version 2
 
 ```c
   struct: inherits_from Chunk_KeyframeAnimationV1 {
@@ -292,7 +292,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Increase num_total_keyframes by 1
 
-### Keyframe Animation - version 3
+#### Keyframe Animation - version 3
 
 ```c
   struct: inherits_from Chunk_KeyframeAnimationV2 {
@@ -302,7 +302,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Increase num_total_keyframes by 1
 
-### Keyframe Animation - version 4
+#### Keyframe Animation - version 4
 
 ```c
   struct: inherits_from Chunk_KeyframeAnimationV3 {
@@ -312,7 +312,7 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Increase num_total_keyframes by 1
 
-### Keyframe Animation - version 5
+#### Keyframe Animation - version 5
 
 ```c
   struct: inherits_from Chunk_KeyframeAnimationV4 {
@@ -321,11 +321,11 @@ This chunks contains mesh data like polygons, uv, materials etc.
 
 > **Note:** Keep num_total_keyframes as is
 
-## Camera
+### Camera
 
 This chunk contains [**node sub-chunk**](#sub-chunk-node) and camera properties 
 
-### Camera - version 0
+#### Camera - version 0
 
 ```c
   struct {
@@ -336,11 +336,11 @@ This chunk contains [**node sub-chunk**](#sub-chunk-node) and camera properties
   } Chunk_CameraV0;
 ```
 
-## Environment
+### Environment
 
 This chunk contains level environment properties
 
-### Environment - version 0
+#### Environment - version 0
 
 ```c
   struct {
@@ -355,19 +355,19 @@ This chunk contains level environment properties
   } Chunk_EnvironmentV0;
 ```
 
-## Point Light
+### Point Light
 
-## Directional Light
+### Directional Light
 
-## Spot Light
+### Spot Light
 
-## Helper
+### Helper
 
-## PointLight Animation
+### PointLight Animation
 
-## Directional Light Animation
+### Directional Light Animation
 
-## SpotLight Animation
+### SpotLight Animation
 
 ## Sub-Chunks
 
@@ -375,7 +375,7 @@ This chunk contains level environment properties
 
 This sub-chunk contains material properties and [**texture sub-chunks**](#sub-chunk-texture)
 
-### Sub-Chunk Material - version 0
+#### Sub-Chunk Material - version 0
 
 ```c
   struct {
@@ -428,7 +428,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } MaterialSubChunkV0;
 ```
 
-### Sub-Chunk Material - version 1
+#### Sub-Chunk Material - version 1
 
 ```c
   struct: inherits_from MaterialSubChunkV0 {
@@ -441,7 +441,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } MaterialSubChunkV1;
 ```
 
-### Sub-Chunk Material - version 2
+#### Sub-Chunk Material - version 2
 
 ```c
   struct: inherits_from MaterialSubChunkV1 {
@@ -451,9 +451,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } MaterialSubChunkV2;
 ```
 
-## Sub-Chunk Texture
+### Sub-Chunk Texture
 
-### Sub-Chunk Texture - version 1
+#### Sub-Chunk Texture - version 1
 
 ```c
   struct {
@@ -472,9 +472,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } TextureSubChunkV1;
 ```
 
-## Sub-Chunk Node
+### Sub-Chunk Node
 
-### Sub-Chunk Node - Version 0
+#### Sub-Chunk Node - Version 0
 
 ```c
   struct {
@@ -484,7 +484,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
     M_Bool has_parent;
   } NodeSubChunkV0;
 ```
-### Sub-Chunk Node - Version 1
+#### Sub-Chunk Node - Version 1
 
 ```c
   struct: inherits_from NodeSubChunkV0 {
@@ -492,9 +492,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } NodeSubChunkV1;
 ```
 
-## Sub-Chunk Geometry
+### Sub-Chunk Geometry
 
-### Sub-Chunk Geometry - version 0
+#### Sub-Chunk Geometry - version 0
 
 ```c
   struct {
@@ -503,7 +503,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } GeometrySubChunkV0;
 ```
 
-### Sub-Chunk Geometry - version 1
+#### Sub-Chunk Geometry - version 1
 
 ```c
   struct {
@@ -523,9 +523,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } GeometrySubChunkV1;
 ```
 
-## Sub-Chunk Polygons
+### Sub-Chunk Polygons
 
-### Sub-Chunk Polygons - version 0
+#### Sub-Chunk Polygons - version 0
 
 ```c
   struct {
@@ -536,7 +536,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } PolygonsSubChunkV0;
 ```
 
-### Sub-Chunk Polygons - version 1
+#### Sub-Chunk Polygons - version 1
 
 ```c
   struct { 
@@ -547,9 +547,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } PolygonsSubChunkV1;
 ```
 
-## Sub-Chunk Polygon
+### Sub-Chunk Polygon
 
-### Sub-Chunk Polygon - version 0
+#### Sub-Chunk Polygon - version 0
 
 ```c
   struct {
@@ -558,9 +558,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } PolygonSubChunkV0;
 ```
 
-## Sub-Chunk Smoothing
+### Sub-Chunk Smoothing
 
-### Sub-Chunk Smoothing - version 0
+#### Sub-Chunk Smoothing - version 0
 
 ```c
   struct {
@@ -569,9 +569,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } SmoothingSubChunkV0;
 ```
 
-## Sub-Chunk Polygon Material
+### Sub-Chunk Polygon Material
 
-### Sub-Chunk Polygon Material - version 0
+#### Sub-Chunk Polygon Material - version 0
 
 ```c
   struct {
@@ -582,7 +582,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } PolygonMaterialSubChunkV0;
 ```
 
-### Sub-Chunk Polygon Material - version 1
+#### Sub-Chunk Polygon Material - version 1
 
 ```c
   struct {
@@ -591,9 +591,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } PolygonMaterialSubChunkV1;
 ```
 
-## Sub-Chunk UV Mapping
+### Sub-Chunk UV Mapping
 
-### Sub-Chunk UV Mapping - version 0
+#### Sub-Chunk UV Mapping - version 0
 
 ```c
   struct {
@@ -607,7 +607,7 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } UVMappingSubChunkV0;
 ```
 
-### Sub-Chunk UV Mapping - version 1
+#### Sub-Chunk UV Mapping - version 1
 
 ```c
   struct {
@@ -623,9 +623,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } UVMappingSubChunkV1;
 ```
 
-## Sub-Chunk Reference To Data
+### Sub-Chunk Reference To Data
 
-### Sub-Chunk Reference To Data - version 0
+#### Sub-Chunk Reference To Data - version 0
 
 ```c
   struct {
@@ -633,9 +633,9 @@ This sub-chunk contains material properties and [**texture sub-chunks**](#sub-ch
   } ReferenceToDataSubChunkV0;
 ```
 
-## Sub-Chunk Animation
+### Sub-Chunk Animation
 
-### Sub-Chunk Animation - version 0
+#### Sub-Chunk Animation - version 0
 
 ```c
   struct {
