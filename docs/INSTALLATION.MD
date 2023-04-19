@@ -1,10 +1,6 @@
 # Max Payne 1 LDB Importer plugin for Maya 2022
 
-<img src="./docs/images/max_img.jpg" />
-
-# Specifications
-
-[Files specifications](./docs/specification/INDEX.MD)
+<img src="./images/max_img.jpg" />
 
 # Prerequisites:
 
@@ -16,7 +12,7 @@ You will need:
 - Go to Maya's menu ```Windows > Settigns/Preferences > Preferences```
 - Set ```Up axis``` to ```Y```
 - Set ```Working Units``` to ```centimeter```
-<img src="./docs/images/Screenshot_7.png" />
+<img src="./images/Screenshot_7.png" />
 
 # Installation:
 
@@ -67,13 +63,13 @@ Linux:
 
 Start Maya and enable the plugin:
 
-<img src="./docs/images/Screenshot_5.png" />
-<img src="./docs/images/Screenshot_6.png" />
+<img src="./images/Screenshot_5.png" />
+<img src="./images/Screenshot_6.png" />
 
 # Import:
 
 - Go to Maya's menu ```File > Import...```
 - Select ```Max Payne LDB Import```
 
-<img src="./docs/images/Screenshot_8.png" />
-<img src="./docs/images/Screenshot_9.png" />
+<img src="./images/Screenshot_8.png" />
+<img src="./images/Screenshot_9.png" />
