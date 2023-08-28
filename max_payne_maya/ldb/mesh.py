@@ -4,54 +4,25 @@ import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import math
 
+import max_payne_maya.progress_bar as progress_bar
+from max_payne_maya.ldb import MayaLDBProxy
+from max_payne_maya.ldb.ldb_proxy import MayaStaticMeshProxy
+
 class MayaLDBMeshlOps:
-    def __init__(self, ldb, materials, progress_callback) -> None:
+    def __init__(self, ldb: MayaLDBProxy, materials) -> None:
         self.ldb = ldb
         self.materials = materials
-        self.progress_callback = progress_callback
-        self.processGeometry()
 
-    def createPolygons(self, mesh):
-        vertices = []
-        normals = []
-        indices = []
-        vertices_per_poly = []
-        materials = {}
-        us = []
-        vs = []
-        uvs = []
-        for polygon_idx in range(mesh.numPolygons()):
-            if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
-                break
-            polygon = mesh.polygons.polygons[polygon_idx]
-            poly_indices = []
-            start_vertex = len(vertices)
-            for i in range(polygon.num_vertices):
-                texture_vertex = mesh.texture_vertices.texture_vertices[polygon.texture_vertex_idx + i]
-                vertex = mesh.vertices.vertices[texture_vertex.vertex_idx]
-                normal = mesh.normals.vertices[texture_vertex.vertex_idx]
-                vertices.append(OpenMaya.MFloatPoint(-vertex.x * 100.0, vertex.y * 100.0, vertex.z * 100.0))
-                normals.append(OpenMaya.MVector(-normal.x, normal.y, normal.z))
-                us.append(texture_vertex.uv.u)
-                vs.append(1 - texture_vertex.uv.v)
-                poly_indices.append(start_vertex + i)
-            if polygon.material.id in materials:
-                materials[polygon.material.id].append(polygon_idx)
-            else:
-                materials[polygon.material.id] = [polygon_idx]
-            poly_indices[1:] = poly_indices[len(poly_indices):0:-1]
-            indices = indices + poly_indices
-            vertices_per_poly.append(len(poly_indices))
-
+    def createPolygons(self, mesh: MayaStaticMeshProxy):
         new_mesh = OpenMaya.MFnMesh()
-        new_mesh.create(vertices, vertices_per_poly, indices, us, vs)
-        new_mesh.setVertexNormals(normals, range(len(vertices)))
-        new_mesh.assignUVs(vertices_per_poly, indices)
-        for material_id, polygons in materials.items():
+        new_mesh.create(mesh.vertices, mesh.vertices_per_poly, mesh.indices, mesh.us, mesh.vs)
+        new_mesh.setVertexNormals(mesh.normals, range(len(mesh.vertices)))
+        new_mesh.assignUVs(mesh.vertices_per_poly, mesh.indices)
+        for material_id, polygons in mesh.materials.items():
             mc.select(clear = True)
             for polygon_id in polygons:
                 mc.select('%s.f[%i]' % (new_mesh.name(), polygon_id), add = True)
-            mc.hyperShade(assign = self.materials.getMaterialNameById(material_id))
+            mc.hyperShade(assign = self.materials[material_id])
         new_mesh.updateSurface()
 
         group_up = OpenMaya.MSelectionList()
@@ -113,20 +84,19 @@ class MayaLDBMeshlOps:
         return result
 
     def processGeometry(self):
-        #transform_tree = self.buildTransformTree(ldb)
         room_transform = {}
-        for room in self.ldb.getRooms().rooms:
-            if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
+        progress_bar.set_message("Importing: Processing geometry")
+        for room_id in range(self.ldb.getRoomsNum()):
+            if not progress_bar.update():
                 break
-            for static_mesh_id in room.static_meshes:
-                if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
+            mesh = self.ldb.getStaticMeshByRoomId(room_id)
+            self.groupAndTransform(self.createPolygons(mesh), mesh.transform)
+            room_transform[room_id] = mesh.transform
+        for room_id in range(self.ldb.getRoomsNum()):
+            if not progress_bar.update():
+                break
+            for dynamic_mesh_id in range(self.ldb.getDynamicMeshesNumByRoomId(room_id)):
+                if not progress_bar.update():
                     break
-                static_mesh = self.ldb.getStaticMeshes().getById(static_mesh_id)
-                self.groupAndTransform(self.createPolygons(static_mesh), static_mesh.transform)
-                room_transform[room.id] = static_mesh.transform
-        for room in self.ldb.getRooms().rooms:
-            for dynamic_mesh_name in room.dynamic_meshes:
-                if not self.progress_callback.updateProgressBar("Importing: Processing geometry"):
-                    break
-                dynamic_mesh =self.ldb.getDynamicMeshes().getBySharedName(dynamic_mesh_name)              
-                self.groupAndTransform(self.createPolygons(dynamic_mesh), self.transformNodeWithParent(room_transform[dynamic_mesh.properties.room_id], dynamic_mesh.properties.object_to_room_transform))
+                mesh = self.ldb.getDynamicMeshByIdAndRoomId(room_id, dynamic_mesh_id)
+                self.groupAndTransform(self.createPolygons(mesh), self.transformNodeWithParent(room_transform[room_id], mesh.transform))
