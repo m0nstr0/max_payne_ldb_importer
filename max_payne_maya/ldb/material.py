@@ -7,6 +7,7 @@ import max_payne_maya.progress_bar as progress_bar
 
 from max_payne_maya.ldb.ldb_proxy import MayaTextureProxy, MayaLDBProxy, MayaMaterialProxy
 
+__TEXTURES_CACHE__ = {}
 
 def createHyperShadeGraph(material_proxy: MayaMaterialProxy, diffuse_texture_path: str, alpha_texture_path: str,
                           reflection_texture_path: str, gloss_texture_path: str, detail_texture_path: str) -> str:
@@ -54,6 +55,11 @@ def getUniqueFileNameAndPath(texture_directory: str, base_file_name: str, ext: s
 
 
 def dumpTextureData(texture_directory: str, texture_proxy: MayaTextureProxy) -> str:
+    global __TEXTURES_CACHE__
+
+    if texture_proxy.file_path in __TEXTURES_CACHE__:
+        return __TEXTURES_CACHE__[texture_proxy.file_path]
+
     file_name, file_path = getUniqueFileNameAndPath(texture_directory,
                                                     Path(texture_proxy.file_path).stem,
                                                     texture_proxy.file_type_name)
@@ -78,10 +84,15 @@ def dumpTextureData(texture_directory: str, texture_proxy: MayaTextureProxy) -> 
             "The level contains scx file. This format is not supported. Empty material_reader will be used")
         return ""
 
+    __TEXTURES_CACHE__[texture_proxy.file_path] = file_path
+
     return file_path
 
 
 def processMaterials(ldb_proxy: MayaLDBProxy, texture_directory: str) -> {}:
+    global __TEXTURES_CACHE__
+    __TEXTURES_CACHE__ = {}
+
     materials_dict = {}
     progress_bar.set_message("Importing: Processing materials")
     for material in ldb_proxy.getMaterials():
@@ -114,4 +125,5 @@ def processMaterials(ldb_proxy: MayaLDBProxy, texture_directory: str) -> {}:
 
         materials_dict[material.id] = shader
 
+    __TEXTURES_CACHE__ = {}
     return materials_dict

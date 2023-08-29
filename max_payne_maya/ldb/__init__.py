@@ -1,5 +1,5 @@
 import maya.cmds as mc
-import max_payne_sdk.max_ldb as max_ldb
+import max_payne_sdk.max_ldb_factory as max_ldb
 
 from max_payne_maya.ldb.ldb_proxy import MayaLDBProxy
 from max_payne_maya.ldb.mesh import MayaLDBMeshlOps

@@ -1,128 +1,31 @@
 from __future__ import annotations
+
+from max_payne_sdk.ldb_common.max_ldb_interface import MaxLDBInterface
+from max_payne_sdk.ldb_common.max_ldb_reader_interface import MaxLDBReaderInterface
 from max_payne_sdk.max_type import parseType
-from max_payne_sdk.max_ldb_type import Vertex
-from max_payne_sdk.max_ldb_type import VertexContainer
-from max_payne_sdk.max_ldb_type import BSPVertex
-from max_payne_sdk.max_ldb_type import BSPPolygon
-from max_payne_sdk.max_ldb_type import BSPNode
-from max_payne_sdk.max_ldb_type import BSPPolygonIndex
-from max_payne_sdk.max_ldb_type import Texture
-from max_payne_sdk.max_ldb_type import LightMapTexture
-from max_payne_sdk.max_ldb_type import Material
-from max_payne_sdk.max_ldb_type import Exit
-from max_payne_sdk.max_ldb_type import VertexUV
-from max_payne_sdk.max_ldb_type import TextureVertex
-from max_payne_sdk.max_ldb_type import Polygon
-from max_payne_sdk.max_ldb_type import PolygonContainer
-from max_payne_sdk.max_ldb_type import StaticMesh
-from max_payne_sdk.max_ldb_type import EntityProperties
-from max_payne_sdk.max_ldb_type import DynamicLight
-from max_payne_sdk.max_ldb_type import Waypoint
-from max_payne_sdk.max_ldb_type import FSMMessageContainer
-from max_payne_sdk.max_ldb_type import FSMStateSpecificMessage
-from max_payne_sdk.max_ldb_type import FSMStateSpecificMessageContainer
-from max_payne_sdk.max_ldb_type import FSMEvent
-from max_payne_sdk.max_ldb_type import FSMEventContainer
-from max_payne_sdk.max_ldb_type import FSMStateContainer
-from max_payne_sdk.max_ldb_type import FSM
-from max_payne_sdk.max_ldb_type import Character
-from max_payne_sdk.max_ldb_type import Trigger
-from max_payne_sdk.max_ldb_type import Graph
-from max_payne_sdk.max_ldb_type import Animation
-from max_payne_sdk.max_ldb_type import AnimationContainer
-from max_payne_sdk.max_ldb_type import DynamicMeshConfig
-from max_payne_sdk.max_ldb_type import DynamicMesh
-from max_payne_sdk.max_ldb_type import Item
-from max_payne_sdk.max_ldb_type import PointLight
-from max_payne_sdk.max_ldb_type import Room
-from max_payne_sdk.max_ldb_type import MaxLDB
+from max_payne_sdk.ldb.vertex_type import Vertex, VertexContainer, VertexUV
+from max_payne_sdk.ldb.bsp_type import BSPVertex, BSPPolygon, BSPNode, BSPPolygonIndex
+from max_payne_sdk.ldb.texture_type import Texture
+from max_payne_sdk.ldb.light_map_texture_type import LightMapTexture
+from max_payne_sdk.ldb.material_type import Material
+from max_payne_sdk.ldb.exit_type import Exit
+from max_payne_sdk.ldb.texture_vertex_type import TextureVertex
+from max_payne_sdk.ldb.polygon_type import Polygon, PolygonContainer
+from max_payne_sdk.ldb.static_mesh_type import StaticMesh
+from max_payne_sdk.ldb.entity_properties_type import EntityProperties
+from max_payne_sdk.ldb.dynamic_light_type import DynamicLight
+from max_payne_sdk.ldb.waypoint_type import Waypoint
+from max_payne_sdk.ldb.fsm_type import FSMMessageContainer, FSMStateSpecificMessage, FSMStateSpecificMessageContainer, \
+    FSMEvent, FSMEventContainer, FSMStateContainer, FSM
+from max_payne_sdk.ldb.character_type import Character
+from max_payne_sdk.ldb.trigger_type import Trigger
+from max_payne_sdk.ldb.animation_type import Graph, Animation, AnimationContainer
+from max_payne_sdk.ldb.dynamic_mesh_type import DynamicMeshConfig, DynamicMesh
+from max_payne_sdk.ldb.item_type import Item
+from max_payne_sdk.ldb.point_light_type import PointLight
+from max_payne_sdk.ldb.room_type import Room
+from max_payne_sdk.ldb.max_ldb_type import MaxLDB
 
-
-class MaxLDBReaderInterface:
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-        pass
-
-    def parse(self) -> MaxLDB:
-        pass
-
-
-class MaxLDBReader2(MaxLDBReaderInterface):
-    def __init__(self, file_path: str):
-        super().__init__(file_path)
-        self.stringTable = ""
-        self.physicalWorldSize = 0.0
-
-    def parseStringTable(self, f) -> None:
-        data = f.read(parseType(f))
-        self.stringTable = data.decode()
-
-    def parseMaterials(self, f) -> None:
-        #diffuse textures
-        for i in range(parseType(f)):
-            texture_type_id = parseType(f)
-            TextureSizeInBytes = parseType(f)
-            StringPositionInStringTable = parseType(f)
-            data = f.read(TextureSizeInBytes)
-
-        #lightmaps
-        LightMapIsDDS = parseType(f)
-        for i in range(parseType(f)):
-            data = f.read(parseType(f))
-
-        #DetailTexturesNum
-        for i in range(parseType(f)):
-            texture_type_id = parseType(f)
-            TextureSizeInBytes = parseType(f)
-            StringPositionInStringTable = parseType(f)
-            data = f.read(TextureSizeInBytes)
-
-        #ReflectionTexturesNum
-        for i in range(parseType(f)):
-            texture_type_id = parseType(f)
-            TextureSizeInBytes = parseType(f)
-            StringPositionInStringTable = parseType(f)
-            data = f.read(TextureSizeInBytes)
-
-        #GlossTexturesNum
-        for i in range(parseType(f)):
-            texture_type_id = parseType(f)
-            TextureSizeInBytes = parseType(f)
-            StringPositionInStringTable = parseType(f)
-            data = f.read(TextureSizeInBytes)
-
-        #materials
-        for i in range(parseType(f)):
-            # Normal - 0, AlphaBlend - 4, AlphaCompare - 1, AlphaCompareEdgeBlend - 2, Additive - 3, WithDetailTexure - 5, WithReflectionTexture - 6, WithGlossTexture - 9, AlphaCompareReflectionGloss - 10, AlphaCompareEdgeBlendReflectionGloss - 11 AlphaCompareEdgeBlendReflection - 8 AlphaCompareReflection - 7
-            BlendMode = parseType(f)
-            StartTextureID = parseType(f)
-            EndTextureID = parseType(f)
-            LightMapTextureID = parseType(f)
-            DetailTextureID = parseType(f)
-            ReflectionTextureID = parseType(f)
-            GlossTextureID = parseType(f)
-            AlphaCompareReferenceValue = parseType(f)
-            # For Z-fighting (for instance: graffity textures)
-            SortPriority = parseType(f)
-            # For Z-fighting (for instance: graffity textures)
-            DetailOffset = parseType(f)
-            DualSided = parseType(f)
-            # For Z-fighting (for instance: graffity textures)
-            WritesZBuffer = parseType(f)
-            Framerate = parseType(f)
-            VisibleFrame = parseType(f)
-    def parse(self) -> MaxLDB:
-        try:
-            with open(self.file_path, "rb") as f:
-                f.read(4)
-                if parseType(f) != 0x22:
-                    raise Exception("Unsupported file version")
-                self.parseStringTable(f)
-                self.physicalWorldSize = parseType(f)
-                self.parseMaterials(f)
-        except IOError:
-            print("Error While Opening the file! %s" % self.file_path)
-        return MaxLDB()
 
 class MaxLDBReader(MaxLDBReaderInterface):
     # collision things
@@ -285,7 +188,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
             for j in range(parseType(f)):
                 parseType(f)  # int
                 parseType(f)  # float
-            self.ldb.getStaticMeshes().addStaticMesh(StaticMesh(
+            self.ldb.getStaticMeshes().add(StaticMesh(
                 static_mesh_id,
                 vertices,
                 normals,
@@ -667,7 +570,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
         super().__init__(file_path)
         self.ldb: MaxLDB = MaxLDB()
 
-    def parse(self) -> MaxLDB:
+    def parse(self) -> MaxLDBInterface:
         self.ldb: MaxLDB = MaxLDB()
         try:
             with open(self.file_path, "rb") as f:
@@ -687,17 +590,3 @@ class MaxLDBReader(MaxLDBReaderInterface):
         except IOError:
             print("Error While Opening the file! %s" % self.file_path)
         return self.ldb
-
-
-class MaxLBDReaderFactory:
-    @staticmethod
-    def createReader(file_path: str) -> MaxLDBReaderInterface:
-        is_ldb2: bool = False
-        with open(file_path, "rb") as f:
-            ldb2_header = int.from_bytes(f.read(4), byteorder='little', signed=False)
-            if ldb2_header == 843203660:
-                is_ldb2 = True
-        if is_ldb2:
-            return MaxLDBReader2(file_path)
-        else:
-            return MaxLDBReader(file_path)
