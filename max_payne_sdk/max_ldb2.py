@@ -65,9 +65,9 @@ class MaxLDBReader2(MaxLDBReaderInterface):
             blend_mode = parseType(f)
             frames = [self.ldb.getTextures().findTextureByGroupAndID(0, i) for i in range(parseType(f), parseType(f) + 1)]
             material.setLightmapTexture(self.ldb.getLightMaps().findLightMapById(parseType(f)))
-            material.setDetailTexture(self.ldb.getTextures().findTextureByGroupAndID(0, parseType(f)))
-            material.setReflectionTexture(self.ldb.getTextures().findTextureByGroupAndID(0, parseType(f)))
-            material.setGlossTexture(self.ldb.getTextures().findTextureByGroupAndID(0, parseType(f)))
+            material.setDetailTexture(self.ldb.getTextures().findTextureByGroupAndID(1, parseType(f)))
+            material.setReflectionTexture(self.ldb.getTextures().findTextureByGroupAndID(2, parseType(f)))
+            material.setGlossTexture(self.ldb.getTextures().findTextureByGroupAndID(3, parseType(f)))
             material.setProperties(
                 MaterialProperties(
                     parseType(f),

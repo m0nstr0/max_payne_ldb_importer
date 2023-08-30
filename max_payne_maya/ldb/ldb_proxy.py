@@ -11,7 +11,7 @@ class MayaTextureProxy:
 
 @dataclass
 class MayaMaterialPropertiesProxy:
-    pass
+    use_alpha_channel: bool
 
 @dataclass
 class MayaMaterialProxy:
@@ -79,6 +79,8 @@ class MayaLDBProxy:
                 gloss_texture = MayaTextureProxy(material.gloss_texture.file_path, material.gloss_texture.getFileTypeName(), material.gloss_texture.data)
             if material.detail_texture is not None:
                 detail_texture = MayaTextureProxy(material.detail_texture.file_path, material.detail_texture.getFileTypeName(), material.detail_texture.data)
+            if material.properties.blend_mode in [4, 1, 2, 10, 11, 8, 7]:
+                properties = MayaMaterialPropertiesProxy(True)
 
         return MayaMaterialProxy(
             material_id,
@@ -126,7 +128,8 @@ class MayaLDBProxy:
             start_poly = 0
             for part_id in range(len(mesh)):
                 start_vertex = len(vertices)
-                indices = indices + [start_vertex + index for index in mesh[part_id].indices]
+                for index in range(0, len(mesh[part_id].indices), 3):
+                    indices = indices + [start_vertex + mesh[part_id].indices[index], start_vertex + mesh[part_id].indices[index + 2], start_vertex + mesh[part_id].indices[index + 1]]
                 vertices = vertices + [OpenMaya.MFloatPoint(-vertex.x * 100.0, vertex.y * 100.0, vertex.z * 100.0) for vertex in mesh[part_id].vertices]
                 normals = normals + [OpenMaya.MFloatPoint(-normal.x, normal.y, normal.z) for normal in mesh[part_id].normals]
                 us = us + [uv.u for uv in mesh[part_id].uvs]

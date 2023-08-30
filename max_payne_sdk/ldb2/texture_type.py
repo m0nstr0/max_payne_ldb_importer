@@ -5,7 +5,7 @@ class Texture:
         self.file_path : str = file_path
         self.file_type : int = file_type
         self.data : bytes = data
-        self.group_id : int = 0
+        self.group_id : int = group_id
 
     def getFileTypeName(self):
         if self.file_type == 0:

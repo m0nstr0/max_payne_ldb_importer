@@ -20,6 +20,8 @@ def createHyperShadeGraph(material_proxy: MayaMaterialProxy, diffuse_texture_pat
         diffuse_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_diffuse")
         mc.setAttr("%s.fileTextureName" % diffuse_node, diffuse_texture_path, type="string")
         mc.connectAttr("%s.outColor" % diffuse_node, "%s.color" % shader)
+        if material_proxy.properties is not None and material_proxy.properties.use_alpha_channel:
+            mc.connectAttr("%s.outTransparency" % diffuse_node, "%s.transparency" % shader)
 
     if alpha_texture_path != "":
         alpha_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_alpha")
