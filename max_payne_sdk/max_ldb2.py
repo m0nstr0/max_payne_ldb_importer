@@ -1,12 +1,19 @@
 from max_payne_sdk.ldb.vertex_type import Vertex, VertexUV
+from max_payne_sdk.ldb2.character_type import CharacterEnemyGroup, Character
 from max_payne_sdk.ldb2.collision_shape_type import CollisionShape, CollisionShapeMoppData
+from max_payne_sdk.ldb2.dynamic_light_type import DynamicLight, DynamicLightColor
+from max_payne_sdk.ldb2.flare_type import Flare
+from max_payne_sdk.ldb2.jump_point_type import JumpPoint
+from max_payne_sdk.ldb2.level_item_type import LevelItem
 from max_payne_sdk.ldb2.light_map_texture_type import LightMapTexture
 from max_payne_sdk.ldb2.material_type import MaterialProperties, Material
 from max_payne_sdk.ldb2.max_ldb2_type import MaxLDB2
+from max_payne_sdk.ldb2.portal_type import Portal
 from max_payne_sdk.ldb2.room_type import Room, RoomAABB
 from max_payne_sdk.ldb2.static_mesh_type import StaticMesh, StaticMeshContainer
 from max_payne_sdk.ldb2.texture_type import Texture
 from max_payne_sdk.ldb2.volume_light_type import VolumeLight, VolumeLightAABB, VolumeLightRGB
+from max_payne_sdk.ldb2.way_point_type import WayPoint
 from max_payne_sdk.ldb_common.max_ldb_interface import MaxLDBInterface
 from max_payne_sdk.ldb_common.max_ldb_reader_interface import MaxLDBReaderInterface
 from max_payne_sdk.max_type import parseType
@@ -155,6 +162,62 @@ class MaxLDBReader2(MaxLDBReaderInterface):
             volume_lights.append(VolumeLight(grid_width, grid_width, grid_depth, VolumeLightAABB(min_point, max_point), colors))
         return volume_lights
 
+    def parseDynamicLights(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getDynamicLights().add(
+                DynamicLight(parseType(f), parseType(f), DynamicLightColor(parseType(f), parseType(f), parseType(f), parseType(f)), parseType(f))
+            )
+
+    def parseFlares(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getFlares().add(
+                Flare(self.getStringFromStringTable(parseType(f)), parseType(f), parseType(f))
+            )
+
+    def parseLevelItems(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getLevelItems().add(
+                LevelItem(self.getStringFromStringTable(parseType(f)), self.getStringFromStringTable(parseType(f)), parseType(f), parseType(f))
+            )
+
+    def parsePortals(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getPortals().add(
+                Portal(parseType(f), parseType(f), parseType(f), parseType(f), [parseType(f) for _ in range(parseType(f))])
+            )
+
+    def parseJumpPoints(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getJumpPoints().add(
+                JumpPoint(parseType(f), parseType(f), parseType(f))
+            )
+
+    def parseWayPoints(self, f):
+        for _ in range(parseType(f)):
+            self.ldb.getWayPoints().add(
+                WayPoint(parseType(f), parseType(f), parseType(f), parseType(f))
+            )
+
+    def parseCharacters(self, f):
+        f.read(1)
+        for _ in range(parseType(f)):
+            self.ldb.getCharacterEnemyGroups().add(CharacterEnemyGroup(parseType(f), parseType(f)))
+
+        for _ in range(parseType(f)):
+            self.ldb.getCharacters().add(Character(self.getStringFromStringTable(parseType(f)), self.getStringFromStringTable(parseType(f)), parseType(f), parseType(f), parseType(f), parseType(f)))
+
+    def parseFSMs(self, f):
+        pass
+
+    def parseTriggers(self, f):
+        pass
+
+    def parseDynamicMeshes(self, f):
+        pass
+
+    def parseMirrors(self, f):
+        pass
+
     def parse(self) -> MaxLDBInterface:
         try:
             with open(self.file_path, "rb") as f:
@@ -164,6 +227,17 @@ class MaxLDBReader2(MaxLDBReaderInterface):
                 self.parseTextures(f)
                 self.parseMaterials(f)
                 self.parseRooms(f)
+                self.parseDynamicLights(f)
+                self.parseFlares(f)
+                self.parseLevelItems(f)
+                self.parsePortals(f)
+                self.parseJumpPoints(f)
+                self.parseWayPoints(f)
+                self.parseCharacters(f)
+                self.parseFSMs(f)
+                self.parseTriggers(f)
+                self.parseDynamicMeshes(f)
+                self.parseMirrors(f)
         except IOError:
             print("Error While Opening the file! %s" % self.file_path)
         return self.ldb
