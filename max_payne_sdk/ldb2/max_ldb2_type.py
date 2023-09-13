@@ -1,6 +1,8 @@
 from max_payne_sdk.ldb2.character_type import CharacterContainer, CharacterEnemyGroupContainer
 from max_payne_sdk.ldb2.dynamic_light_type import DynamicLightContainer
+from max_payne_sdk.ldb2.dynamic_mesh_type import DynamicMeshContainer
 from max_payne_sdk.ldb2.flare_type import FlareContainer
+from max_payne_sdk.ldb2.fsm_type import FSMContainer
 from max_payne_sdk.ldb2.jump_point_type import JumpPointContainer
 from max_payne_sdk.ldb2.level_item_type import LevelItemContainer
 from max_payne_sdk.ldb2.light_map_texture_type import LightMapTextureContainer
@@ -15,7 +17,7 @@ from max_payne_sdk.ldb_common.max_ldb_interface import MaxLDBInterface
 class MaxLDB2(MaxLDBInterface):
     def __init__(self) -> None:
         self.textures: TextureContainer = TextureContainer()
-        self.lightmaps: LightMapTextureContainer = LightMapTextureContainer()
+        self.light_maps: LightMapTextureContainer = LightMapTextureContainer()
         self.materials: MaterialContainer = MaterialContainer()
         self.rooms: RoomContainer = RoomContainer()
         self.dynamic_lights: DynamicLightContainer = DynamicLightContainer()
@@ -26,6 +28,8 @@ class MaxLDB2(MaxLDBInterface):
         self.way_points: WayPointContainer = WayPointContainer()
         self.characters: CharacterContainer = CharacterContainer()
         self.character_enemy_groups: CharacterEnemyGroupContainer = CharacterEnemyGroupContainer()
+        self.dynamic_meshes: DynamicMeshContainer = DynamicMeshContainer()
+        self.fsms: FSMContainer = FSMContainer()
 
     def getTextures(self) -> TextureContainer:
         return self.textures
@@ -34,7 +38,7 @@ class MaxLDB2(MaxLDBInterface):
         return self.materials
 
     def getLightMaps(self) -> LightMapTextureContainer:
-        return self.lightmaps
+        return self.light_maps
 
     def getRooms(self) -> RoomContainer:
         return self.rooms
@@ -62,3 +66,9 @@ class MaxLDB2(MaxLDBInterface):
 
     def getCharacterEnemyGroups(self) -> CharacterEnemyGroupContainer:
         return self.character_enemy_groups
+
+    def getDynamicMeshes(self) -> DynamicMeshContainer:
+        return self.dynamic_meshes
+
+    def getFSMS(self) -> FSMContainer:
+        return self.fsms

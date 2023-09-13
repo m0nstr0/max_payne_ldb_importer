@@ -1,23 +1,16 @@
 from dataclasses import dataclass
 
-from max_payne_sdk.ldb.vertex_type import Vertex
+from max_payne_sdk.ldb2.aabb_type import AABB
 from max_payne_sdk.ldb2.collision_shape_type import CollisionShape
 from max_payne_sdk.ldb2.static_mesh_type import StaticMeshContainer
 from max_payne_sdk.ldb2.volume_light_type import VolumeLight
 
 
 @dataclass
-class RoomAABB:
-    min_point: Vertex
-    max_point: Vertex
-    mid_point: Vertex
-
-
-@dataclass
 class Room:
     name: str
     transform: []
-    aabb: RoomAABB
+    aabb: AABB
     static_mesh: StaticMeshContainer
     collisions: [CollisionShape]
     volume_lights: [VolumeLight]
