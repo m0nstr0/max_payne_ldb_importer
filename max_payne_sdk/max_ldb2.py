@@ -34,10 +34,10 @@ class MaxLDBReader2(MaxLDBReaderInterface):
         self.stringTable = f.read(parseType(f))
 
     def getStringFromStringTable(self, pos: int) -> str:
-        return self.stringTable[pos:self.stringTable.find(b'\x00', pos)].decode()
+        return self.stringTable[pos:self.stringTable.find(b'\x00', pos)].decode("latin-1")
 
     def getStringArrayFromStringTable(self, pos: int) -> str:
-        return self.stringTable[pos:self.stringTable.find(b'\x00', pos)].decode()
+        return self.stringTable[pos:self.stringTable.find(b'\x00', pos)].decode("latin-1")
 
     def parseTexture(self, group_id: int, f) -> Texture:
         file_type = parseType(f)
@@ -213,8 +213,11 @@ class MaxLDBReader2(MaxLDBReaderInterface):
             self.ldb.getCharacters().add(Character(self.getStringFromStringTable(parseType(f)), self.getStringFromStringTable(parseType(f)), parseType(f), parseType(f), parseType(f), parseType(f)))
 
     def parseFSMs(self, f):
+        i = 0
         for _ in range(parseType(f)):
             name = self.getStringFromStringTable(parseType(f))
+            print("%i" % i)
+            i = i + 1
             transform = parseType(f)
             parent_id = parseType(f)
             local_transform = parseType(f)
