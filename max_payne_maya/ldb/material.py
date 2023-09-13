@@ -2,106 +2,130 @@ import maya.cmds as mc
 import os
 from pathlib import Path
 from PIL import Image
-from PIL import ImageChops
 import sys
+import max_payne_maya.progress_bar as progress_bar
 
-class MayaLDBMaterialOps:
-    def __init__(self, ldb, texture_directory, progress_callback) -> None:
-        self.ldb = ldb
-        self.empty_material = self.createMaterialNode("max_payne_mat_none", "", "")
-        self.textures = {}
-        self.materials = []
-        self.texture_directory = texture_directory
-        self.progress_callback = progress_callback
-        self.processMaterials()
+from max_payne_maya.ldb.ldb_proxy import MayaTextureProxy, MayaLDBProxy, MayaMaterialProxy
 
-    def getMaterialNameById(self, id):
-        for material in self.materials:
-            if id == material[0]:
-                return material[1]
-        return self.empty_material
+__TEXTURES_CACHE__ = {}
 
-    def createMaterialNode(self, material_name, diffuse_file_path, alpha_file_path):
-        shader = mc.shadingNode("lambert", asShader=True, name=material_name)
-        shading_group = mc.sets(renderable=True,noSurfaceShader=True,empty=True)
-        mc.connectAttr("%s.outColor" % shader ,"%s.surfaceShader" % shading_group)
+def createHyperShadeGraph(material_proxy: MayaMaterialProxy, diffuse_texture_path: str, alpha_texture_path: str,
+                          reflection_texture_path: str, gloss_texture_path: str, detail_texture_path: str) -> str:
 
-        if diffuse_file_path != "":
-            diffuse_file_node = mc.shadingNode("file", asTexture=True, name=material_name + "_diffuse")
-            mc.setAttr("%s.fileTextureName" % diffuse_file_node, diffuse_file_path, type="string")
-            mc.connectAttr("%s.outColor" % diffuse_file_node, "%s.color" % shader)
+    shader = mc.shadingNode("lambert", asShader=True, name=material_proxy.name)
+    shading_group = mc.sets(renderable=True, noSurfaceShader=True, empty=True)
+    mc.connectAttr("%s.outColor" % shader, "%s.surfaceShader" % shading_group)
 
-        alpha_file_node = ""
-        if alpha_file_path != "":
-            alpha_file_node = mc.shadingNode("file", asTexture=True, name=material_name + "_alpha")
-            mc.setAttr("%s.fileTextureName" % alpha_file_node, alpha_file_path, type="string")
-            mc.connectAttr("%s.outColor" % alpha_file_node, "%s.transparency" % shader)
+    if diffuse_texture_path != "":
+        diffuse_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_diffuse")
+        mc.setAttr("%s.fileTextureName" % diffuse_node, diffuse_texture_path, type="string")
+        mc.connectAttr("%s.outColor" % diffuse_node, "%s.color" % shader)
+        if material_proxy.properties is not None and material_proxy.properties.use_alpha_channel:
+            mc.connectAttr("%s.outTransparency" % diffuse_node, "%s.transparency" % shader)
 
-        return shader
+    if alpha_texture_path != "":
+        alpha_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_alpha")
+        mc.setAttr("%s.fileTextureName" % alpha_node, alpha_texture_path, type="string")
+        mc.setAttr("%s.invert" % alpha_node, 1)
+        mc.connectAttr("%s.outColor" % alpha_node, "%s.transparency" % shader)
 
-    def getUniqueFileNameAndPath(self, base_file_name, ext):
-        file_name = base_file_name
-        i = 0
-        while os.path.exists(os.path.join(self.texture_directory, file_name + '.' + ext)):
-            file_name = file_name + str(i)
-            i = i + 1
-        return (file_name, os.path.join(self.texture_directory, file_name + "." + ext))
+    if reflection_texture_path != "":
+        reflection_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_reflection")
+        mc.setAttr("%s.fileTextureName" % reflection_node, reflection_texture_path, type="string")
+        # mc.connectAttr("%s.outColor" % reflection_node, "%s.color" % shader)
 
-    def getTextureFileName(self, texture, is_alpha = False):
-        if texture == None:
-            return ""
-        if texture.file_path in self.textures:
-            return self.textures[texture.file_path]
-        return self.dumpTextureData(texture, is_alpha)
+    if gloss_texture_path != "":
+        gloss_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_gloss")
+        mc.setAttr("%s.fileTextureName" % gloss_node, gloss_texture_path, type="string")
+        # mc.connectAttr("%s.outColor" % gloss_node, "%s.color" % shader)
 
-    def processMaterials(self):
-        for material in self.ldb.getMaterials().materials:
-            if not self.progress_callback.updateProgressBar("Importing: Processing materials"):
-                break
+    if detail_texture_path != "":
+        detail_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_detail")
+        mc.setAttr("%s.fileTextureName" % detail_node, detail_texture_path, type="string")
+        # mc.connectAttr("%s.outColor" % detail_node, "%s.color" % shader)
 
-            material_name = "max_payne_mat_%i" % material.id          
-            diffuse_texture = self.getTextureFileName(material.diffuse_texture)
-            
-            alpha_texture = ""
-            if material.alpha_texture != None:
-                alpha_texture = self.getTextureFileName(material.alpha_texture, True)
-            
-            self.materials.append([
-                material.id, 
-                self.createMaterialNode(material_name, diffuse_texture, alpha_texture)
-            ])
+    return shader
 
-    def dumpTextureData(self, texture, is_alpha = False):
-        file_name, file_path = self.getUniqueFileNameAndPath(Path(texture.file_path).stem, texture.getFileTypeName())
+
+def getUniqueFileNameAndPath(texture_directory: str, base_file_name: str, ext: str):
+    file_name = base_file_name
+    i = 0
+    while os.path.exists(os.path.join(texture_directory, file_name + '.' + ext)):
+        file_name = file_name + str(i)
+        i = i + 1
+    return file_name, os.path.join(texture_directory, file_name + "." + ext)
+
+
+def dumpTextureData(texture_directory: str, texture_proxy: MayaTextureProxy) -> str:
+    global __TEXTURES_CACHE__
+
+    if texture_proxy.file_path in __TEXTURES_CACHE__:
+        return __TEXTURES_CACHE__[texture_proxy.file_path]
+
+    file_name, file_path = getUniqueFileNameAndPath(texture_directory,
+                                                    Path(texture_proxy.file_path).stem,
+                                                    texture_proxy.file_type_name)
+    try:
+        with open(file_path, "wb") as f:
+            f.write(texture_proxy.data)
+    except IOError:
+        sys.stderr.write("Error opening file %s for reading" % file_path)
+        raise
+
+    if texture_proxy.file_type_name == "pcx":
         try:
-            with open(file_path, "wb") as f:
-                f.write(texture.data)
-        except IOError:
-            sys.stderr.write("Error opening file %s for reading" % file_path)
+            with Image.open(file_path) as im:
+                file_name, file_path = getUniqueFileNameAndPath(texture_directory, file_name, 'png')
+                im.save(file_path)
+        except OSError:
+            sys.stderr.write("Error converting file %s to png" % file_path)
             raise
 
-        if texture.getFileTypeName() == "pcx":
-            try:
-                with Image.open(file_path) as im:
-                    file_name, file_path = self.getUniqueFileNameAndPath(file_name, 'png')
-                    im.save(file_path)
-            except OSError:
-                sys.stderr.write("Error converting file %s to png" % file_path)
-                raise
+    if texture_proxy.file_type_name == "scx":
+        sys.stdout.write(
+            "The level contains scx file. This format is not supported. Empty material_reader will be used")
+        return ""
 
-        if texture.getFileTypeName() == "scx":
-            sys.stdout.write("The level contains scx file. This format is not supported. Empty material_reader will be used")
-            return ""
+    __TEXTURES_CACHE__[texture_proxy.file_path] = file_path
 
-        if is_alpha == True:
-            try:
-                with Image.open(file_path) as im:
-                    file_name, file_path = self.getUniqueFileNameAndPath(file_name + "_inverted", 'png')
-                    inv_img = ImageChops.invert(im)
-                    inv_img.save(file_path)
-            except OSError:
-                sys.stderr.write("Error converting file %s to png" % file_path)
-                raise
+    return file_path
 
-        self.textures[texture.file_path] = file_path
-        return file_path
+
+def processMaterials(ldb_proxy: MayaLDBProxy, texture_directory: str) -> {}:
+    global __TEXTURES_CACHE__
+    __TEXTURES_CACHE__ = {}
+
+    materials_dict = {}
+    progress_bar.set_message("Importing: Processing materials")
+    for material in ldb_proxy.getMaterials():
+        if not progress_bar.update():
+            break
+
+        diffuse_texture_path: str = ""
+        alpha_texture_path: str = ""
+        reflection_texture_path: str = ""
+        gloss_texture_path: str = ""
+        detail_texture_path: str = ""
+
+        if material.diffuse_texture is not None:
+            diffuse_texture_path = dumpTextureData(texture_directory, material.diffuse_texture)
+        if material.alpha_texture is not None:
+            alpha_texture_path = dumpTextureData(texture_directory, material.alpha_texture)
+        if material.reflection_texture is not None:
+            reflection_texture_path = dumpTextureData(texture_directory, material.reflection_texture)
+        if material.gloss_texture is not None:
+            gloss_texture_path = dumpTextureData(texture_directory, material.gloss_texture)
+        if material.detail_texture is not None:
+            detail_texture_path = dumpTextureData(texture_directory, material.detail_texture)
+
+        shader = createHyperShadeGraph(material,
+                              diffuse_texture_path,
+                              alpha_texture_path,
+                              reflection_texture_path,
+                              gloss_texture_path,
+                              detail_texture_path)
+
+        materials_dict[material.id] = shader
+
+    __TEXTURES_CACHE__ = {}
+    return materials_dict
