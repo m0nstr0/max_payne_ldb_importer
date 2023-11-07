@@ -10,7 +10,7 @@ MAX_IN = sys.argv[1]
 MAX_OUT = sys.argv[2]
 
 print("Reading LDB file {}".format(MAX_IN))
-ldb = max_ldb.MaxLDBReader().parse(MAX_IN)
+ldb = max_ldb.MaxLDBReader(MAX_IN).parse()
 
 FSMS = []
 for fsm in ldb.getFSMs().fsms:
