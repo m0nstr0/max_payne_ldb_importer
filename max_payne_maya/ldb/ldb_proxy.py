@@ -206,7 +206,7 @@ class MayaLDBProxy:
         if isinstance(self.ldb, MaxLDB2):
             mesh = self.ldb.getRooms()[room_id].static_mesh
             return self.getMeshProxyLDB2(mesh, self.ldb.getRooms()[room_id].transform,
-                                         self.ldb.getRooms()[room_id].aabb.pivot_point)
+                                         [0.0, 0.0, 0.0])#self.ldb.getRooms()[room_id].aabb.pivot_point)
 
         if isinstance(self.ldb, MaxLDB):
             static_mesh_id = self.ldb.getRooms()[room_id].static_meshes[0]
