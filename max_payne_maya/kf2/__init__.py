@@ -338,8 +338,11 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 mc.setKeyframe(animation_object, at = "scaleZ", ott = "step")
 
     def importSkin(self):
+        # all mp nodes in maya
         mp_node_names = mc.ls("*.mp_node_name", o=True)
         for skin in self.kf2.getSkins():
+
+            # find bones
             skeleton_object_names_dict = {}
             skeleton_object_names = []
             for i in range(len(skin.skeleton_object_names)):
@@ -348,42 +351,114 @@ class KF2ImportDialog(KF2ImportDialogUI):
                         skeleton_object_names_dict[mp_node_name.lower()] = i
                         skeleton_object_names.append(mp_node_name)
                         break
+
+            # find mesh to skin
             skin_object_name = ""
             for mp_node_name in mp_node_names:
                 if skin.skin_object_names[0].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
                     skin_object_name = mp_node_name
                     break
+
+            # apply skin cluster
             mc.select(skeleton_object_names)
             mc.select(skin_object_name, add=True)
+
             skin_cluster_name = mc.skinCluster()
+
             skin_object_dag = OpenMaya.MGlobal.getSelectionListByName(skin_object_name).getDagPath(0)
             skin_fn = OpenMayaAnim.MFnSkinCluster(OpenMaya.MGlobal.getSelectionListByName(skin_cluster_name[0]).getDependNode(0))
-            skin_id_to_cluster_id = {}
-            for bone_dag in skin_fn.influenceObjects():
-                skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
 
-            zero_weights = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
-            zero_influences = OpenMaya.MIntArray([x for x in range(len(skin_id_to_cluster_id.values()))])
+            skin_bone_id_to_cluster_bone_id = {}
+            cluster_bone_ids = []
+            for bone_dag in skin_fn.influenceObjects():
+                cluster_bone_ids.append(skin_fn.indexForInfluenceObject(bone_dag))
+                if bone_dag.partialPathName().lower() in skeleton_object_names_dict:
+                    skin_bone_id_to_cluster_bone_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
 
             influences = {}
             weights = {}
             for skin_vertex in skin.skin_vertices:
-                bones_set = {*skin_vertex.vertex_bone_indices}
                 influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
-                weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+                bones_set = set()
                 for bone_index in skin_vertex.vertex_bone_indices:
-                    influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
-                for i in range(len(skin_vertex.vertex_weights)):
-                    weights[skin_vertex.vertex_index][i] = skin_vertex.vertex_weights[i]
-                for i in skin_id_to_cluster_id.values():
-                    if i not in bones_set:
-                        influences[skin_vertex.vertex_index].append(i)
+                    bones_set.add(skin_bone_id_to_cluster_bone_id[bone_index])
+                    influences[skin_vertex.vertex_index].append(skin_bone_id_to_cluster_bone_id[bone_index])
+                for cluster_bone_id in cluster_bone_ids:
+                    if cluster_bone_id not in bones_set:
+                        influences[skin_vertex.vertex_index].append(cluster_bone_id)
+
+                weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(influences[skin_vertex.vertex_index]))])
+                for weight_id in range(len(skin_vertex.vertex_weights)):
+                    weights[skin_vertex.vertex_index][weight_id] = skin_vertex.vertex_weights[weight_id]
 
             for component in OpenMaya.MItGeometry(skin_object_dag):
-                if component.index() not in influences:
-                    skin_fn.setWeights(skin_object_dag, component.currentItem(), zero_influences, zero_weights, normalize = False, returnOldWeights = False)
-                else:
-                    skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+                skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+
+            # zero weight
+            #for bone_dag in skin_fn.influenceObjects():
+            #    sel_list = skin_fn.getPointsAffectedByInfluence(bone_dag)
+            #    for i in range(sel_list[0].length()):
+            #        component = sel_list[0].getComponent(i)[1]
+            #        skin_fn.setWeights(skin_object_dag, component, skin_fn.indexForInfluenceObject(bone_dag), 0, normalize=False, returnOldWeights=False)
+
+
+            #skin_id_to_cluster_id = {}
+            #cluster_id_to_skin_id = {}
+
+            #for bone_dag in skin_fn.influenceObjects():
+            #    if bone_dag.partialPathName().lower() in skeleton_object_names_dict:
+            #        cluster_id_to_skin_id[skin_fn.indexForInfluenceObject(bone_dag)] = skeleton_object_names_dict[bone_dag.partialPathName().lower()]
+            #    else:
+            #        cluster_id_to_skin_id[skin_fn.indexForInfluenceObject(bone_dag)] = -1
+            #    if bone_dag.partialPathName().lower() in skeleton_object_names_dict:
+            #        skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
+
+
+
+
+
+            # zero_weights = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+            # zero_influences = OpenMaya.MIntArray([x for x in range(len(skin_id_to_cluster_id.values()))])
+            #
+            #
+            # #for k,v in cluster_id_to_skin_id:
+            #
+            # #for component in OpenMaya.MItGeometry(skin_object_dag):
+            # #    component.index()
+            #
+            # influences = {}
+            # weights = {}
+            # for skin_vertex in skin.skin_vertices:
+            #     bones_set = {*skin_vertex.vertex_bone_indices}
+            #     influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
+            #     weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+            #     for bone_index in skin_vertex.vertex_bone_indices:
+            #         influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
+            #     for i in range(len(skin_vertex.vertex_weights)):
+            #         weights[skin_vertex.vertex_index][i] = skin_vertex.vertex_weights[i]
+            #     for i in skin_id_to_cluster_id.values():
+            #         if i not in bones_set:
+            #             influences[skin_vertex.vertex_index].append(i)
+            #
+            # influences = {}
+            # weights = {}
+            # for skin_vertex in skin.skin_vertices:
+            #     bones_set = {*skin_vertex.vertex_bone_indices}
+            #     influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
+            #     weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
+            #     for bone_index in skin_vertex.vertex_bone_indices:
+            #         influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
+            #     for i in range(len(skin_vertex.vertex_weights)):
+            #         weights[skin_vertex.vertex_index][i] = skin_vertex.vertex_weights[i]
+            #     for i in skin_id_to_cluster_id.values():
+            #         if i not in bones_set:
+            #             influences[skin_vertex.vertex_index].append(i)
+            #
+            # for component in OpenMaya.MItGeometry(skin_object_dag):
+            #     if component.index() not in influences:
+            #         skin_fn.setWeights(skin_object_dag, component.currentItem(), zero_influences, zero_weights, normalize = False, returnOldWeights = False)
+            #     else:
+            #         skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
 
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:
