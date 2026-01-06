@@ -1,12 +1,14 @@
+import random
+
 from max_payne_sdk.lvl2.max_chunk import MaxChunk
 from max_payne_sdk.lvl2.max_fsm_script import MaxFSMScript
 from max_payne_sdk.lvl2.max_pack import packInt, packULong, packDouble, packBool, packString, packUInt
 
 
 class MaxNode:
-    def __init__(self):
+    def __init__(self, id, name):
         self.node_type = 103
-        self.node_id = 0
+        self.node_id = id
         self.node_translate = [0.0, 0.0, 0.0]
         self.node_matrix33 = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         self.aabb_min = [0.0, 0.0, 0.0]
@@ -17,7 +19,7 @@ class MaxNode:
         self.node_exclude_from_lighting = False
         self.node_enable_export_regrouping = False
         self.node_gameplay_critical = True
-        self.node_name = ''
+        self.node_name = name
         self.has_fsm = False
         self.children = []
         self.fsm = MaxFSMScript()
@@ -25,6 +27,10 @@ class MaxNode:
 
     def getChildData(self):
         return []
+
+    def calcAABBWithRadius(self):
+        self.aabb_min = [self.node_translate[0] - self.radius, self.node_translate[0] - self.radius, self.node_translate[0] - self.radius]
+        self.aabb_max = [self.node_translate[0] + self.radius, self.node_translate[0] + self.radius, self.node_translate[0] + self.radius]
 
     def getBytes(self):
         data = [packULong(self.node_id),
