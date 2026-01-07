@@ -1,0 +1,27 @@
+global proc AEMP2_Node_FlareTemplate( string $nodeName )
+{
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Max Payne 2 :: Flare" -collapse 0;
+
+        editorTemplate -beginLayout "Base" -collapse 0;
+                editorTemplate -addControl "Hidden";
+                editorTemplate -addControl "ExcludeFromGame";
+                editorTemplate -addControl "ExcludeFromLighting";
+                editorTemplate -addControl "EnableExportRegrouping";
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "Flare" -collapse 0;
+                editorTemplate -addControl "FlareName";
+        editorTemplate -endLayout;
+
+    editorTemplate -endLayout;
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addExtraControls;
+
+    editorTemplate -endScrollLayout;
+}
