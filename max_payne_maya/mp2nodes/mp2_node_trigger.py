@@ -18,6 +18,7 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
     ExcludeFromLightingAttr = OpenMaya.MObject()
     EnableExportRegroupingAttr = OpenMaya.MObject()
 
+    RadiusAttr = OpenMaya.MObject()
     TriggerPlayerAttr = OpenMaya.MObject()
     TriggerUseAttr = OpenMaya.MObject()
     TriggerEnemyAttr = OpenMaya.MObject()
@@ -33,6 +34,14 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
     @staticmethod
     def initializer():
         MP2NodeTrigger.initializeBaseAttributes()
+
+        radius_attr = OpenMaya.MFnNumericAttribute()
+        MP2NodeTrigger.RadiusAttr = radius_attr.create("Radius", "Radius", OpenMaya.MFnNumericData.kFloat, 0.5)
+        radius_attr.hidden = False
+        radius_attr.keyable = False
+        radius_attr.writable = True
+        radius_attr.storable = True
+        MP2NodeTrigger.addAttribute(MP2NodeTrigger.RadiusAttr)
 
         player_attr = OpenMaya.MFnNumericAttribute()
         MP2NodeTrigger.TriggerPlayerAttr = player_attr.create("Player", "Player", OpenMaya.MFnNumericData.kBoolean, 0)
@@ -140,17 +149,21 @@ class MP2NodeTriggerDrawData(OpenMaya.MUserData):
     def __init__(self):
         OpenMaya.MUserData.__init__(self, False)
 
+        self.radius = 0.5
         self.text_color = OpenMaya.MColor((0.12, 0.25, 0.25))
-        if cmds.upAxis(q=True, axis=True) == 'y':
-            self.text_center = OpenMaya.MPoint((0.0, 0.7, 0.0))
-        else:
-            self.text_center = OpenMaya.MPoint((0.0, 0.0, 0.7))
+        self.text_center = OpenMaya.MPoint((0.0, self.radius + 0.2, 0.0))
         self.color = OpenMaya.MColor((0.12, 0.25, 0.25, 0.25))
         self.center = OpenMaya.MPoint(0.0, 0.0, 0.0)
-        self.radius = 0.5
-        self.subdivisionsAxis = 10
-        self.subdivisionsHeight = 10
+        self.subdivisionsAxis = 20
+        self.subdivisionsHeight = 20
         self.filled = True
+        self.updateTextPosition()
+
+    def updateTextPosition(self):
+        if cmds.upAxis(q=True, axis=True) == 'y':
+            self.text_center = OpenMaya.MPoint((0.0, self.radius + 0.2, 0.0))
+        else:
+            self.text_center = OpenMaya.MPoint((0.0, 0.0, self.radius + 0.2))
 
 
 class MP2NodeTriggerDrawOverride(OpenMayaRender.MPxDrawOverride):
@@ -167,6 +180,10 @@ class MP2NodeTriggerDrawOverride(OpenMayaRender.MPxDrawOverride):
 
     def prepareForDraw(self, objPath, cameraPath, frameContext, oldData):
         data = oldData if isinstance(oldData, MP2NodeTriggerDrawData) else MP2NodeTriggerDrawData()
+        plug = OpenMaya.MPlug(objPath.node(), MP2NodeTrigger.RadiusAttr)
+        if not plug.isNull:
+            data.radius = plug.asFloat()
+            data.updateTextPosition()
         return data
 
     def hasUIDrawables(self):

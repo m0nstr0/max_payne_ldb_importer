@@ -14,6 +14,7 @@ global proc AEMP2_Node_TriggerTemplate( string $nodeName )
         editorTemplate -addSeparator;
 
         editorTemplate -beginLayout "Trigger" -collapse 0;
+                editorTemplate -addControl "Radius";
                 editorTemplate -addControl "Player";
                 editorTemplate -addControl "Use";
                 editorTemplate -addControl "Enemy";
