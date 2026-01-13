@@ -1,4 +1,9 @@
-global proc AEMP2_Node_TriggerTemplate( string $nodeName )
+import maya.cmds as cmds
+
+
+def registerMP2NodeTriggerAETemplate():
+    mel = '''
+ global proc AEMP2_Node_TriggerTemplate( string $nodeName )
 {
     editorTemplate -beginScrollLayout;
 
@@ -6,7 +11,7 @@ global proc AEMP2_Node_TriggerTemplate( string $nodeName )
 
         editorTemplate -beginLayout "Base" -collapse 0;
             editorTemplate -beginNoOptimize;
-                editorTemplate -label "Hidden" -addControl "na_hidden";
+                editorTemplate -label "Hidden12" -addControl "na_hidden";
                 editorTemplate -label "Exclude From Game" -addControl "na_excludeFromGame";
                 editorTemplate -label "Exclude From Lighting" -addControl "na_excludeFromLighting";
                 editorTemplate -label "Enable Export Regrouping" -addControl "na_enableExportRegrouping";
@@ -37,7 +42,7 @@ global proc AEMP2_Node_TriggerTemplate( string $nodeName )
                 editorTemplate -label "Common Animation" -addControl "na_activatorsAnimationCommon";
                 editorTemplate -addSeparator;
                 editorTemplate -label "Use Custom" -addControl "na_activatorsAnimationUseCustom";
-                editorTemplate -label "Custom Animation" -addControl "na_activatorsAnimationCustom";
+                editorTemplate -label "Custom Animation" -addControl "na_activatorsAnimationCustom"; 
             editorTemplate -endNoOptimize;
         editorTemplate -endLayout;
 
@@ -96,3 +101,6 @@ global proc AEmyButtonReplace(string $attrName) {
 }
 
 // 4. The command the button will run
+
+    '''
+    cmds.eval(mel)

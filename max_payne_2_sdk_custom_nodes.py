@@ -1,15 +1,11 @@
-import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaRender as OpenMayaRender
 
-from maya.OpenMaya import MGlobal
-import sys
-import maya.cmds as mc
+#from maya.OpenMaya import MGlobal
 
 from max_payne_maya.mp2nodes.mp2_node_ain import MP2NodeAin, MP2NodeAinDrawOverride
 from max_payne_maya.mp2nodes.mp2_node_flare import MP2NodeFlare, MP2NodeFlareDrawOverride
-from max_payne_maya.mp2nodes.mp2_node_ids import MP2_JUMP_POINT_NODE_NAME, MP2_JUMP_POINT_NODE_ID, \
-    MP2_LEVEL_ITEM_NODE_NAME, MP2_AIN_NODE_NAME, MP2_WAY_POINT_NODE_NAME, MP2_FLARE_NODE_NAME, MP2_TRIGGER_NODE_NAME
+from max_payne_maya.mp2nodes.mp2_node_ids import MP2_JUMP_POINT_NODE_NAME, MP2_LEVEL_ITEM_NODE_NAME, MP2_AIN_NODE_NAME, MP2_WAY_POINT_NODE_NAME, MP2_FLARE_NODE_NAME, MP2_TRIGGER_NODE_NAME
 from max_payne_maya.mp2nodes.mp2_node_jump_point import MP2NodeJumpPoint, MP2NodeJumpPointDrawOverride
 from max_payne_maya.mp2nodes.mp2_node_level_item import MP2NodeLevelItem, MP2NodeLevelItemDrawOverride
 from max_payne_maya.mp2nodes.mp2_node_trigger import MP2NodeTrigger, MP2NodeTriggerDrawOverride
