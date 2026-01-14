@@ -257,8 +257,6 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
 
     @staticmethod
     def perform_edit_fsm_action(node_name):
-        print(f"{node_name} value")
-
         node_only = node_name.split('.')[0]
         try:
             sel = OpenMaya.MSelectionList()
@@ -271,18 +269,6 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
         if my_node:
             fsm_edit_widow = MP2FSMDialog(my_node, "na_fsm")
             fsm_edit_widow.show()
-
-        # plug = fnNode.findPlug("na_fsm", False)
-        # old_val = plug.asString()
-        # plug.setString("qqwe2")
-        # print(f"{node_name} value changed from {old_val}")
-
-        # 3. Retrieve the Python class instance (MPxNode proxy)
-        # This returns your actual custom class (e.g., MyCustomNode instance)
-        # node_instance = OpenMaya.MPxNode.getInternalData(node)
-        # if node_instance:
-        #     node_instance.run_fsm_editor()
-
 
 class MP2NodeTriggerDrawData(OpenMaya.MUserData):
     def __init__(self):
