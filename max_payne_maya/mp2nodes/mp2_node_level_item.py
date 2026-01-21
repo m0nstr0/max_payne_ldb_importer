@@ -1,10 +1,11 @@
-import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaRender as OpenMayaRender
 import maya.api.OpenMayaUI as OpenMayaUI
 import maya.cmds as cmds
 
-from max_payne_maya.mp2nodes.mp2_node_ids import MP2_LEVEL_ITEM_NODE_ID, MP2_LEVEL_ITEM_NODE_NAME
+from max_payne_maya.mp2nodes.mp2_node_ids import MP2_LEVEL_ITEM_NODE_ID, MP2_LEVEL_ITEM_NODE_NAME, \
+    MP2_LEVEL_ITEM_NAMES_COMMON, MP2_USE_ACTIVATE_ANIMATIONS
+
 
 class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
     NODE_ID = OpenMaya.MTypeId(MP2_LEVEL_ITEM_NODE_ID)
@@ -17,8 +18,9 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
     ExcludeFromLightingAttr = OpenMaya.MObject()
     EnableExportRegroupingAttr = OpenMaya.MObject()
 
-    AttributesCategory = OpenMaya.MObject()
-    ItemNameAttr = OpenMaya.MObject()
+    ItemNameCustomAttr = OpenMaya.MObject()
+    ItemNameCommonAttr = OpenMaya.MObject()
+    ItemNameUseCustomAttr = OpenMaya.MObject()
 
     @staticmethod
     def creator():
@@ -28,28 +30,40 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
     def initializer():
         MP2NodeLevelItem.initializeBaseAttributes()
 
-        category_attr = OpenMaya.MFnEnumAttribute()
-        MP2NodeLevelItem.AttributesCategory = category_attr.create("inputsCategory", "inCat", 0)
-        category_attr.addField("Inputs", 0)
-        category_attr.hidden = False
-        category_attr.keyable = False
-        category_attr.writable = True
-        category_attr.storable = True
-        MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.AttributesCategory)
+        item_name_use_custom = OpenMaya.MFnNumericAttribute()
+        MP2NodeLevelItem.ItemNameUseCustomAttr = item_name_use_custom.create("na_itemNameUseCustom", "na_itemNameUseCustom", OpenMaya.MFnNumericData.kBoolean, False)
+        item_name_use_custom.hidden = False
+        item_name_use_custom.keyable = False
+        item_name_use_custom.writable = True
+        item_name_use_custom.storable = True
+        MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ItemNameUseCustomAttr)
 
-        item_name_string = OpenMaya.MFnStringData().create("Ammo_Beretta")
-        item_name_attr = OpenMaya.MFnTypedAttribute()
-        MP2NodeLevelItem.ItemNameAttr = item_name_attr.create("ItemName", "ItemName", OpenMaya.MFnData.kString, item_name_string)
-        category_attr.hidden = False
-        category_attr.keyable = False
-        category_attr.writable = True
-        category_attr.storable = True
-        MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ItemNameAttr)
+        item_name_custom_string = OpenMaya.MFnStringData().create(MP2_LEVEL_ITEM_NAMES_COMMON[0])
+        item_name_custom_attr = OpenMaya.MFnTypedAttribute()
+        MP2NodeLevelItem.ItemNameCustomAttr = item_name_custom_attr.create("na_itemNameCustom", "na_itemNameCustom", OpenMaya.MFnData.kString, item_name_custom_string)
+        item_name_custom_attr.hidden = False
+        item_name_custom_attr.keyable = False
+        item_name_custom_attr.writable = True
+        item_name_custom_attr.storable = True
+        MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ItemNameCustomAttr)
+
+        item_name_common_attr = OpenMaya.MFnEnumAttribute()
+        MP2NodeLevelItem.ItemNameCommonAttr = item_name_common_attr.create("na_itemNameCommon", "na_itemNameCommon", 0)
+
+        for i in range(len(MP2_LEVEL_ITEM_NAMES_COMMON)):
+            item_name_common_attr.addField(MP2_LEVEL_ITEM_NAMES_COMMON[i], i)
+
+        item_name_common_attr.hidden = False
+        item_name_common_attr.keyable = False
+        item_name_common_attr.writable = True
+        item_name_common_attr.storable = True
+        MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ItemNameCommonAttr)
+
 
     @staticmethod
     def initializeBaseAttributes():
         hidden_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeLevelItem.HiddenAttr = hidden_attr.create("Hidden", "Hidden", OpenMaya.MFnNumericData.kBoolean, 0)
+        MP2NodeLevelItem.HiddenAttr = hidden_attr.create("na_hidden", "na_hidden", OpenMaya.MFnNumericData.kBoolean, 0)
         hidden_attr.hidden = False
         hidden_attr.keyable = False
         hidden_attr.writable = True
@@ -57,8 +71,7 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
         MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.HiddenAttr)
 
         exclude_from_game_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeLevelItem.ExcludeFromGameAttr = exclude_from_game_attr.create("ExcludeFromGame", "ExcludeFromGame",
-                                                                  OpenMaya.MFnNumericData.kBoolean, 0)
+        MP2NodeLevelItem.ExcludeFromGameAttr = exclude_from_game_attr.create("na_excludeFromGame", "na_excludeFromGame", OpenMaya.MFnNumericData.kBoolean, 0)
         exclude_from_game_attr.hidden = False
         exclude_from_game_attr.keyable = False
         exclude_from_game_attr.writable = True
@@ -66,8 +79,7 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
         MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ExcludeFromGameAttr)
 
         exclude_from_lighting_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeLevelItem.ExcludeFromLightingAttr = exclude_from_lighting_attr.create("ExcludeFromLighting", "ExcludeFromLighting",
-                                                                      OpenMaya.MFnNumericData.kBoolean, 0)
+        MP2NodeLevelItem.ExcludeFromLightingAttr = exclude_from_lighting_attr.create("na_excludeFromLighting", "na_excludeFromLighting", OpenMaya.MFnNumericData.kBoolean, 0)
         exclude_from_lighting_attr.hidden = False
         exclude_from_lighting_attr.keyable = False
         exclude_from_lighting_attr.writable = True
@@ -75,9 +87,7 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
         MP2NodeLevelItem.addAttribute(MP2NodeLevelItem.ExcludeFromLightingAttr)
 
         enable_export_regrouping_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeLevelItem.EnableExportRegroupingAttr = enable_export_regrouping_attr.create("EnableExportRegrouping",
-                                                                         "EnableExportRegrouping",
-                                                                         OpenMaya.MFnNumericData.kBoolean, 0)
+        MP2NodeLevelItem.EnableExportRegroupingAttr = enable_export_regrouping_attr.create("na_enableExportRegrouping", "na_enableExportRegrouping", OpenMaya.MFnNumericData.kBoolean, 0)
         enable_export_regrouping_attr.hidden = False
         enable_export_regrouping_attr.keyable = False
         enable_export_regrouping_attr.writable = True

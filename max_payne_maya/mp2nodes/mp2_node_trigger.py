@@ -3,36 +3,8 @@ import maya.api.OpenMayaRender as OpenMayaRender
 import maya.api.OpenMayaUI as OpenMayaUI
 import maya.cmds as cmds
 
-from max_payne_maya.mp2nodes.mp2_fsm_ui import MP2FSMDialog
-from max_payne_maya.mp2nodes.mp2_node_ids import MP2_TRIGGER_NODE_ID, MP2_TRIGGER_NODE_NAME
+from max_payne_maya.mp2nodes.mp2_node_ids import MP2_TRIGGER_NODE_ID, MP2_TRIGGER_NODE_NAME, MP2_USE_ACTIVATE_ANIMATIONS
 
-
-# {
-#     "states": {
-#         "test": {
-#             "AlwaysSendBefore": [],
-#             "AlwaysSendAfter": [],
-#             "StateSpecific": {
-#                 "state_name": []
-#             }
-#         }
-#     },
-#     "default_state": "none",
-#     "custom_events": [],
-#     "standart_events": {
-#         "Startup": {
-#             "AlwaysSendBefore": [],
-#             "AlwaysSendAfter": []
-#         }
-#     },
-#     "timers": {
-#         "timer": {
-#             "isRealTime": 1,
-#             "TimerLength": 1
-#
-#         }
-#     }
-# }
 
 class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
     NODE_ID = OpenMaya.MTypeId(MP2_TRIGGER_NODE_ID)
@@ -107,7 +79,7 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
         animation_name_use_custom.storable = True
         MP2NodeTrigger.addAttribute(MP2NodeTrigger.ActivatorsAnimationUseCustomAttr)
 
-        animation_name_string_custom = OpenMaya.MFnStringData().create("Default")
+        animation_name_string_custom = OpenMaya.MFnStringData().create(MP2_USE_ACTIVATE_ANIMATIONS[0])
         animation_name_custom_attr = OpenMaya.MFnTypedAttribute()
         MP2NodeTrigger.ActivatorsAnimationCustomAttr = animation_name_custom_attr.create("na_activatorsAnimationCustom",
                                                                                          "na_activatorsAnimationCustom",
@@ -123,12 +95,10 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
         MP2NodeTrigger.ActivatorsAnimationCommonAttr = animation_name_common_attr.create("na_activatorsAnimationCommon",
                                                                                          "na_activatorsAnimationCommon",
                                                                                          0)
-        animation_name_common_attr.addField("Default", 0)
-        animation_name_common_attr.addField("Default1", 1)
-        animation_name_common_attr.addField("Default2", 2)
-        animation_name_common_attr.addField("Default3", 3)
-        animation_name_common_attr.addField("Default4", 4)
-        animation_name_common_attr.addField("Default5", 5)
+
+        for i in range(len(MP2_USE_ACTIVATE_ANIMATIONS)):
+            animation_name_common_attr.addField(MP2_USE_ACTIVATE_ANIMATIONS[i], i)
+
         animation_name_common_attr.hidden = False
         animation_name_common_attr.keyable = False
         animation_name_common_attr.writable = True
@@ -254,21 +224,6 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
 
     def compute(self, plug, dataBlock):
         pass
-
-    @staticmethod
-    def perform_edit_fsm_action(node_name):
-        node_only = node_name.split('.')[0]
-        try:
-            sel = OpenMaya.MSelectionList()
-            sel.add(node_only)
-            node = sel.getDependNode(0)
-        except:
-            return
-
-        my_node = OpenMaya.MFnDependencyNode(node)
-        if my_node:
-            fsm_edit_widow = MP2FSMDialog(my_node, "na_fsm")
-            fsm_edit_widow.show()
 
 class MP2NodeTriggerDrawData(OpenMaya.MUserData):
     def __init__(self):

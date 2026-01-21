@@ -1,4 +1,4 @@
-# Max Payne 1 and Max Payne 2 LDB (Game Levels) Importer plugin for Maya 2022/2023/2024
+# Max Payne 1 and Max Payne 2 LDB (Game Levels) Importer plugin for Maya 2025/2026
 
 <img src="./docs/images/max_img.jpg" />
 
@@ -9,7 +9,7 @@
 # Prerequisites:
 
 You will need:
-- Maya 2022/2023/2024 with Python 3 support
+- Maya 2025/2026 with Python 3 support
 
 # Maya Configuration:
 

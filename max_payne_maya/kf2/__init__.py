@@ -1,7 +1,7 @@
 import maya.cmds as mc
 import maya.OpenMayaUI as omui
-from PySide2 import QtCore, QtGui, QtWidgets
-from shiboken2 import wrapInstance
+from PySide6 import QtCore, QtGui, QtWidgets
+from shiboken6 import wrapInstance
 import max_payne_sdk.max_kf2 as max_kf2
 import maya.OpenMayaMPx as OpenMayaMPx
 import maya.api.OpenMaya as OpenMaya

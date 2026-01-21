@@ -1,0 +1,70 @@
+global proc AEMP2_Node_MaterialTemplate( string $nodeName )
+{
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Max Payne 2 :: Material" -collapse 0;
+
+        editorTemplate -beginLayout "Common Material Properties" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Category" -addControl "na_category";
+                editorTemplate -label "Dual Sided" -addControl "na_dualSided";
+                editorTemplate -label "Adult Content" -addControl "na_adultContent";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -beginLayout "Diffuse Texture" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Diffuse Texture" -addControl "color";
+                editorTemplate -label "Default Width" -addControl "na_diffuseTextureWidth";
+                editorTemplate -label "Default Height" -addControl "na_diffuseTextureHeight";
+                editorTemplate -label "Diffuse Texture (Frames N+1)" -addControl "na_diffuseTextureAdditional";
+                editorTemplate -label "Active Frame" -addControl "na_activeFrame";
+                editorTemplate -label "Framerate" -addControl "na_framerate";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -beginLayout "Texture Mode" -collapse 0;
+            editorTemplate -label "Texture Mode" -addControl "na_textureMode";
+
+            editorTemplate -beginLayout "Texture Mode :: Alpha Compare" -collapse 0;
+                editorTemplate -beginNoOptimize;
+                    editorTemplate -label "Edge Blend" -addControl "na_alphaEdgeBlend";
+                    editorTemplate -label "Reference Value" -addControl "na_alphaCompareReferenceValue";
+                 editorTemplate -endNoOptimize;
+            editorTemplate -endLayout;
+
+            editorTemplate -beginLayout "Texture Mode :: Width Detail Texture" -collapse 0;
+                editorTemplate -beginNoOptimize;
+                    editorTemplate -label "Detail Texture" -addControl "na_detailTexture";
+                    editorTemplate -label "Default Scale" -addControl "na_detailTextureScale";
+                 editorTemplate -endNoOptimize;
+            editorTemplate -endLayout;
+
+        editorTemplate -endLayout;
+
+        editorTemplate -beginLayout "Reflection" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Reflection Texture" -addControl "na_reflectionTexture";
+                editorTemplate -label "Gloss Texture" -addControl "na_glossTexture";
+                editorTemplate -addSeparator;
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -beginLayout "Light Layer" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Light Layer Texture" -addControl "na_lightLayerTexture";
+                editorTemplate -label "Default Width" -addControl "na_lightLayerWidth";
+                editorTemplate -label "Default Height" -addControl "na_lightLayerHeight";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+    editorTemplate -endLayout;
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addExtraControls;
+
+    editorTemplate -endScrollLayout;
+}

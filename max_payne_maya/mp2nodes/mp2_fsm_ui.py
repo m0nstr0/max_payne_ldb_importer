@@ -1,17 +1,52 @@
 import math
+import sys
 
-import maya.OpenMayaUI as omui
-from PySide2 import QtCore, QtGui, QtWidgets
-from shiboken2 import wrapInstance
+# import maya.OpenMayaUI as omui
+from PySide6 import QtCore, QtGui, QtWidgets
+from shiboken6 import wrapInstance
+import maya.api.OpenMaya as OpenMaya
 import json
 
 
 class MP2FSMEventDataModel:
-    def __init__(self, name):
+    def __init__(self, name, use_states=True):
         self.name = name
-        self.send_before = []
-        self.send_after = []
+        self.events = []
+        self.event_specific = {}
+        self.use_states = use_states
         self.state_specific = {}
+
+    def addEvent(self, name):
+        self.events.append(name)
+        self.event_specific[name] = []
+
+    def getEventsNames(self):
+        return self.events
+
+    def getEventSpecific(self, name):
+        for k in self.event_specific:
+            if k.lower() == name.lower():
+                return self.event_specific[k]
+        return []
+
+    def setEventSpecific(self, name, messages):
+        for k in self.event_specific:
+            if k.lower() == name.lower():
+                self.event_specific[k] = messages
+                return
+
+    def setStateSpecific(self, name, messages):
+        for k in self.state_specific:
+            if k.lower() == name.lower():
+                self.state_specific[k] = messages
+                return
+        self.state_specific[name] = messages
+
+    def getStateMessages(self, name):
+        for k in self.state_specific:
+            if k.lower() == name.lower():
+                return self.state_specific[k]
+        return []
 
     def removeState(self, name):
         found_key = None
@@ -45,41 +80,234 @@ class MP2FSMTimerDataModel:
         self.name = name
         self.is_real_time = False
         self.length = 3.0
-        self.events = [MP2FSMEventDataModel('OnStartTimer'), MP2FSMEventDataModel('OnEndTimer')]
+
+        on_start_timer = MP2FSMEventDataModel(f"OnStartTimer({name})")
+        on_start_timer.addEvent('Send Always Before')
+        on_start_timer.addEvent('Send Always After')
+        on_start_timer.use_states = True
+
+        on_end_timer = MP2FSMEventDataModel(f"OnEndTimer({name})")
+        on_end_timer.addEvent('Send Always Before')
+        on_end_timer.addEvent('Send Always After')
+        on_end_timer.use_states = True
+
+        self.events = {'OnStartTimer': on_start_timer, 'OnEndTimer': on_end_timer}
+
+    def rename(self, new_name):
+        self.name = new_name
+        self.events['OnStartTimer'].name = f"OnStartTimer({new_name})"
+        self.events['OnEndTimer'].name = f"OnEndTimer({new_name})"
+
+    def renameState(self, old_name, new_name):
+        for i in self.events:
+            self.events[i].renameState(old_name, new_name)
+
+    def removeState(self, name):
+        for i in self.events:
+            self.events[i].removeState(name)
 
     def getEventByName(self, name):
-        for event in self.events:
-            if event.name == name:
-                return event
-        return None
+        return self.events[name]
 
 
 class MP2FSMDataModel:
     def __init__(self):
-        self.states = []
+        self.states_names = []
+        self.states_events = []
+        self.custom_events_names = []
         self.custom_events = []
-        self.events = []
         self.timers = []
         self.default_state = None
         self.edit_event_delegate = []
 
-    def getCustomEvents(self):
-        return self.custom_events
+        self.events = []
 
     def getEvents(self):
         return self.events
 
-    def getStates(self):
-        return self.states
+    @staticmethod
+    def getNextName(prefix, data):
+        index = len(data)
+        next_name = "%s_%d" % (prefix, index)
+        while True:
+            found = False
+            for name in data:
+                if name.lower() == next_name:
+                    found = True
+                    break
+            if found:
+                index = index + 1
+                next_name = "%s_%d" % (prefix, index)
+            else:
+                break
+        return next_name
+
+    def getNextTimerName(self):
+        index = len(self.timers)
+        next_name = "timer_%d" % index
+        while True:
+            found = False
+            for timer in self.timers:
+                if timer.name.lower() == next_name:
+                    found = True
+                    break
+            if found:
+                index = index + 1
+                next_name = "timer_%d" % index
+            else:
+                break
+        return next_name
+
+    def getStatesNames(self):
+        return self.states_names
+
+    def getStatesEvents(self):
+        return self.states_events
+
+    def getStateEventByName(self, name):
+        for i in self.states_events:
+            if i.name.lower() == f"fsm_switch(%s)" % name.lower():
+                return i
+        return None
+
+    def renameState(self, old_name, new_name):
+        for i in range(len(self.states_names)):
+            if self.states_names[i].lower() == old_name.lower():
+                self.states_names[i] = new_name
+                break
+
+        state = self.getStateEventByName(old_name)
+        state.name = f"FSM_Switch({new_name})"
+
+        for i in self.states_events:
+            i.renameState(old_name, new_name)
+
+        for i in self.custom_events:
+            i.renameState(old_name, new_name)
+
+        for i in self.timers:
+            i.renameState(old_name, new_name)
+
+        if self.default_state.lower() == old_name.lower():
+            default_state = new_name
+            self.setDefaultState(default_state)
+
+        self.broadcastEditEvent(state)
+
+    def setDefaultState(self, name):
+        self.default_state = name
+
+    def createState(self):
+        new_state_name = self.getNextName('state', self.states_names)
+        self.states_names.append(new_state_name)
+
+        new_state = MP2FSMEventDataModel(f"FSM_Switch({new_state_name})")
+        new_state.addEvent('Send Always Before')
+        new_state.addEvent('Send Always After')
+        new_state.use_states = True
+        self.states_events.append(new_state)
+
+        if len(self.states_names) == 1:
+            self.setDefaultState(new_state_name)
+
+        return new_state_name
+
+    def removeState(self, name):
+        for i in range(len(self.states_names)):
+            if self.states_names[i].lower() == name.lower():
+                self.states_names.remove(self.states_names[i])
+                break
+
+        state = self.getStateEventByName(name)
+        self.states_events.remove(state)
+
+        for i in self.states_events:
+            i.removeState(name)
+
+        for i in self.custom_events:
+            i.removeState(name)
+
+        for i in self.timers:
+            i.removeState(name)
+
+        if self.default_state.lower() == name.lower():
+            default_state = None
+            if len(self.states_names) > 0:
+                default_state = self.states_names[0]
+            self.setDefaultState(default_state)
+
+    def getCustomEventsNames(self):
+        return self.custom_events_names
+
+    def getCustomEvents(self):
+        return self.custom_events
+
+    def createCustomEvent(self):
+        new_custom_event_name = self.getNextName('custom_event', self.custom_events_names)
+        self.custom_events_names.append(new_custom_event_name)
+
+        new_state = MP2FSMEventDataModel(f"FSM_Send({new_custom_event_name})")
+        new_state.addEvent('Send Always Before')
+        new_state.addEvent('Send Always After')
+        new_state.use_states = True
+        self.custom_events.append(new_state)
+
+        return new_custom_event_name
+
+    def getCustomEventByName(self, name):
+        for i in self.custom_events:
+            if i.name.lower() == f"fsm_send(%s)" % name.lower():
+                return i
+        return None
+
+    def renameCustomEvent(self, old_name, new_name):
+        for i in range(len(self.custom_events_names)):
+            if self.custom_events_names[i].lower() == old_name.lower():
+                self.custom_events_names[i] = new_name
+                break
+
+        custom_event = self.getCustomEventByName(old_name)
+        custom_event.name = f"FSM_Send({new_name})"
+
+        self.broadcastEditEvent(custom_event)
+
+    def removeCustomEvent(self, name):
+        for i in range(len(self.custom_events_names)):
+            if self.custom_events_names[i].lower() == name.lower():
+                self.custom_events_names.remove(self.custom_events_names[i])
+                break
+        event = self.getCustomEventByName(name)
+        self.custom_events.remove(event)
+
+    def getTimerByName(self, name):
+        for i in self.timers:
+            if i.name.lower() == name:
+                return i
+        return None
 
     def getTimers(self):
         return self.timers
 
-    def renameCustomEvent(self, old_name, new_name):
-        custom_event = self.getCustomEventByName(old_name)
-        custom_event.name = new_name
+    def renameTimer(self, old_name, new_name):
+        timer = self.getTimerByName(old_name)
+        timer.rename(new_name)
+        self.broadcastEditEvent(None)
 
-        self.broadcastEditEvent(custom_event)
+    def createTimer(self):
+        new_timer = MP2FSMTimerDataModel(self.getNextTimerName())
+        self.timers.append(new_timer)
+        return new_timer
+
+    def removeTimer(self, name):
+        timer = self.getTimerByName(name)
+        self.timers.remove(timer)
+
+    def subscribeToEditEvent(self, callback):
+        self.edit_event_delegate.append(callback)
+
+    def broadcastEditEvent(self, event):
+        for i in self.edit_event_delegate:
+            i(event)
 
     def changeTimerLength(self, name, length):
         timer = self.getTimerByName(name)
@@ -89,62 +317,11 @@ class MP2FSMDataModel:
         timer = self.getTimerByName(name)
         timer.is_real_time = not timer.is_real_time
 
-    def renameTimer(self, old_name, new_name):
-        timer = self.getTimerByName(old_name)
-        timer.name = new_name
-        self.broadcastEditEvent(None)
-
-    def renameState(self, old_name, new_name):
-        state = self.getStateByName(old_name)
-        state.name = new_name
-
-        for i in self.states:
-            i.renameState(old_name, new_name)
-
-        if self.default_state.lower() == state.name.lower():
-            default_state = new_name
-            self.setDefaultState(default_state)
-        self.broadcastEditEvent(state)
-
     def getEventByName(self, name):
         for i in self.events:
             if i.name.lower() == name:
                 return i
         return None
-
-    def getCustomEventByName(self, name):
-        for i in self.custom_events:
-            if i.name.lower() == name:
-                return i
-        return None
-
-    def getTimerByName(self, name):
-        for i in self.timers:
-            if i.name.lower() == name:
-                return i
-        return None
-
-    def getStateByName(self, name):
-        for i in self.states:
-            if i.name.lower() == name:
-                return i
-        return None
-
-    def setDefaultState(self, name):
-        self.default_state = name
-
-    def removeState(self, name):
-        state = self.getStateByName(name)
-        self.states.remove(state)
-
-        for i in self.states:
-            i.removeState(name)
-
-        if self.default_state.lower() == state.name.lower():
-            default_state = None
-            if len(self.states) > 0:
-                default_state = self.states[0].name
-            self.setDefaultState(default_state)
 
     def getEventsDict(self, events):
         events_list = []
@@ -205,54 +382,245 @@ class MP2FSMDataModel:
 
         self.default_state = json_dict['default_state']
 
-    @staticmethod
-    def getNextName(prefix, data):
-        index = len(data)
-        next_name = "%s_%d" % (prefix, index)
-        while True:
-            found = False
-            for i in data:
-                if i.name.lower() == next_name:
-                    found = True
-                    break
-            if found:
-                index = index + 1
-                next_name = "%s_%d" % (prefix, index)
-            else:
-                break
-        return next_name
 
-    def createCustomEvent(self):
-        new_event = MP2FSMEventDataModel(self.getNextName('custom_event', self.custom_events))
-        self.custom_events.append(new_event)
-        return new_event
+class MP2FSMTextEditHighlighter(QtGui.QSyntaxHighlighter):
+    def __init__(self, parent):
+        super().__init__(parent.document())
 
-    def createTimer(self):
-        new_timer = MP2FSMTimerDataModel(self.getNextName('timer', self.timers))
-        self.timers.append(new_timer)
-        return new_timer
+    def highlightBlock(self, text):
+        block_number = self.currentBlock().blockNumber()
 
-    def createState(self):
-        new_state = MP2FSMEventDataModel(self.getNextName('state', self.states))
-        self.states.append(new_state)
-        return new_state
+        if "§§ " in text:
+            fmt = QtGui.QTextCharFormat()
+            fmt.setFontWeight(QtGui.QFont.Bold)
+            self.setFormat(0, len(text), fmt)
 
-    def subscribeToEditEvent(self, callback):
-        self.edit_event_delegate.append(callback)
 
-    def broadcastEditEvent(self, event):
-        for i in self.edit_event_delegate:
-            i(event)
+class MP2FSMTextEditWidget(QtWidgets.QPlainTextEdit):
+    TAG = "§§ %s:\n"
 
-    def removeCustomEvent(self, name):
-        event = self.getCustomEventByName(name)
-        self.custom_events.remove(event)
+    def __init__(self, parent, model: MP2FSMDataModel):
+        super().__init__(parent)
+        self.cursor_range_id = None
+        self.prev_cur_pos = None
+        self.current_event_model = None
+        self.states_cached = []
+        self.events_cached = []
+        self.data_model = model
+        self.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setAcceptDrops(False)
+        self.highlighter = MP2FSMTextEditHighlighter(self)
+        self.data_model.subscribeToEditEvent(self.updateCode)
+        self.updateCode(None)
 
-    def removeTimer(self, name):
-        timer = self.getTimerByName(name)
-        self.timers.remove(timer)
+    def dragEnterEvent(self, event):
+        event.ignore()
 
-# QItemDelegate
+    def dragMoveEvent(self, event):
+        event.ignore()
+
+    def dropEvent(self, event):
+        event.ignore()
+
+    def contextMenuEvent(self, e) -> None:
+        pass
+
+    def getTagRanges(self):
+        extra_selections = self.extraSelections()
+        extra_selections_len = len(extra_selections)
+
+        ranges = []
+        for i in range(extra_selections_len):
+            if i == 0:
+                continue
+            a = extra_selections[i].cursor.blockNumber()
+            b = self.blockCount()
+            if i + 1 < extra_selections_len:
+                b = extra_selections[i + 1].cursor.blockNumber()
+            ranges.append([a, b])
+
+        return ranges
+
+    def isDeleteAllowed(self, key):
+        ranges = self.getTagRanges()
+        block = self.textCursor().blockNumber()
+        for i in ranges:
+            if block == i[
+                0] + 1 and self.textCursor().atBlockStart() and key == QtCore.Qt.Key_Backspace and not self.textCursor().hasSelection():
+                return False
+            if block == i[
+                1] - 1 and self.textCursor().atBlockEnd() and key == QtCore.Qt.Key_Delete and not self.textCursor().hasSelection():
+                return False
+
+        return True
+
+    def keyPressEvent(self, event) -> None:
+        # navigation is ok
+        if event.key() in (
+                QtCore.Qt.Key_Left, QtCore.Qt.Key_Right,
+                QtCore.Qt.Key_Up, QtCore.Qt.Key_Down,
+                QtCore.Qt.Key_Home, QtCore.Qt.Key_End,
+                QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown
+        ):
+            super().keyPressEvent(event)
+            return
+
+        if event.key() in (QtCore.Qt.Key_Backspace, QtCore.Qt.Key_Delete):
+            if not self.isDeleteAllowed(event.key()):
+                event.ignore()
+                return
+
+        if not self.isSelectionInEditableRange():
+            event.ignore()
+            return
+
+        super().keyPressEvent(event)
+
+    def isSelectionInEditableRange(self):
+        cursor = self.textCursor()
+        if not cursor.hasSelection():
+            return self.isCursorInEditableRange(cursor.blockNumber())
+
+        doc = self.document()
+        start_block = doc.findBlock(cursor.selectionStart()).blockNumber()
+        end_block = doc.findBlock(cursor.selectionEnd()).blockNumber()
+
+        ranges = self.getTagRanges()
+        for i in ranges:
+            if start_block > i[0] and end_block < i[1]:
+                return True
+
+        return False
+
+    def isCursorInEditableRange(self, blockNumber=None):
+        if blockNumber is None:
+            pos = self.textCursor().blockNumber()
+        else:
+            pos = blockNumber
+        for selection in self.extraSelections():
+            if pos == selection.cursor.blockNumber():
+                return False
+        return True
+
+    def saveCode(self, event_model: MP2FSMEventDataModel = None):
+        if event_model is None:
+            return
+
+        extra_selections = self.extraSelections()
+        extra_selections_len = len(extra_selections)
+
+        ranges = []
+        for i in range(extra_selections_len):
+            if i == 0:
+                continue
+            a = extra_selections[i].cursor.blockNumber() + 1
+            b = self.blockCount()
+            if i + 1 < extra_selections_len:
+                b = extra_selections[i + 1].cursor.blockNumber()
+            ranges.append([a, b])
+
+        document = self.document()
+        event = 0
+        state = 0
+        for i in ranges:
+            a = i[0]
+            b = i[1]
+            messages = []
+            while a < b:
+                block = document.findBlockByNumber(a)
+                a = a + 1
+                if not block.isValid():
+                    continue
+                text = block.text().strip()
+                if text != '':
+                    messages.append(text)
+            if event_model.use_states and event > 0 and state < len(self.states_cached):
+                event_model.setStateSpecific(self.states_cached[state], messages)
+                state = state + 1
+            elif event < len(self.events_cached):
+                event_model.setEventSpecific(self.events_cached[event], messages)
+                event = event + 1
+
+    def updateCode(self, event_model=None) -> None:
+        self.saveCode(self.current_event_model)
+        self.current_event_model = event_model
+
+        self.clear()
+        self.setEnabled(False)
+
+        if not event_model:
+            return
+
+        self.setEnabled(True)
+        self.fillWithCode(event_model)
+
+    def fillWithCode(self, event_model: MP2FSMEventDataModel):
+        tag_lines = {0: "#C0C0C0"}
+
+        self.events_cached = event_model.getEventsNames()
+        self.states_cached = self.data_model.getStatesNames()
+
+        states_added = False
+        line_no = 1
+
+        code_text = MP2FSMTextEditWidget.TAG % ('Upon Receiving: ' + event_model.name)
+        for event_name in self.events_cached:
+            messages = event_model.getEventSpecific(event_name)
+            code_text = code_text + (MP2FSMTextEditWidget.TAG % event_name)
+            tag_lines[line_no] = "#C0E080"
+            line_no = line_no + 1
+
+            for message in messages:
+                code_text = code_text + message + "\n"
+                line_no = line_no + 1
+            code_text = code_text + "\n"
+            line_no = line_no + 1
+
+            if event_model.use_states and not states_added:
+                for state_name in self.states_cached:
+                    code_text = code_text + (MP2FSMTextEditWidget.TAG % state_name)
+                    state_messages = event_model.getStateMessages(state_name)
+                    tag_lines[line_no] = "#FFFFA0"
+                    line_no = line_no + 1
+
+                    if len(state_messages) > 0:
+                        for message in state_messages:
+                            code_text = code_text + message + "\n"
+                            line_no = line_no + 1
+                    code_text = code_text + "\n"
+                    line_no = line_no + 1
+                states_added = True
+
+        self.setPlainText(code_text)
+        self.highlightMarkerLines(tag_lines)
+        block = self.document().findBlockByLineNumber(2)
+        self.textCursor().setPosition(block.position())
+
+    def highlightMarkerLine(self, line, color):
+        block = self.document().findBlockByLineNumber(line)
+
+        if block.isValid():
+            selection = QtWidgets.QTextEdit.ExtraSelection()
+            selection.cursor = QtGui.QTextCursor(block)
+            fmt = QtGui.QTextCharFormat()
+            fmt.setBackground(QtGui.QColor(color))
+            fmt.setForeground(QtCore.Qt.black)
+            fmt.setProperty(QtGui.QTextFormat.FullWidthSelection, True)
+            selection.format = fmt
+            selection.cursor.clearSelection()
+            return selection
+
+        return None
+
+    def highlightMarkerLines(self, lines):
+        extra_selections = []
+
+        for line in lines:
+            extra_selections.append(self.highlightMarkerLine(line, lines[line]))
+
+        self.setExtraSelections(extra_selections)
+
+
 class MP2FSMTreeItemDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent, data_model):
         self.data_model = data_model
@@ -308,7 +676,7 @@ class MP2FSMTreeItemDelegate(QtWidgets.QStyledItemDelegate):
         user_role = index.data(QtCore.Qt.UserRole)
 
         if user_role != 'timer' and user_role != 'state':
-            super(MP2FSMTreeItemDelegate, self).paint(painter, option, index)
+            super().paint(painter, option, index)
             return
 
         painter.save()
@@ -326,12 +694,10 @@ class MP2FSMTreeItemDelegate(QtWidgets.QStyledItemDelegate):
         self.initStyleOption(opt, index)
         name = index.data(QtCore.Qt.EditRole)
 
-        state = self.data_model.getStateByName(name)
-
         style = opt.widget.style() if opt.widget else QtWidgets.QApplication.style()
 
         name_font = QtGui.QFont(opt.font)
-        if state.name.lower() == self.data_model.default_state.lower():
+        if name.lower() == self.data_model.default_state.lower():
             name_font.setBold(True)
         else:
             name_font.setBold(False)
@@ -388,13 +754,13 @@ class MP2FSMTreeItemDelegate(QtWidgets.QStyledItemDelegate):
         painter.drawText(x, text_y, f"- {length:.2f}s")
 
 
-class MP2FSMTreeComponent(QtWidgets.QWidget):
+class MP2FSMTreeWidget(QtWidgets.QTreeWidget):
     def __init__(self, main_window, parent, data_model: MP2FSMDataModel):
-        super(MP2FSMTreeComponent, self).__init__(parent)
+        super().__init__(parent)
+
         self.toggle_timer_type_action = None
         self.main_window = main_window
         self.data_model = data_model
-        self.tree_widget = None
         self.custom_events_item = None
         self.states_events_item = None
         self.timers_events_item = None
@@ -413,43 +779,48 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
         self.rename_action = None
         self.delete_action = None
 
-        top_v_layout = QtWidgets.QVBoxLayout(self)
-        top_v_layout.setContentsMargins(0, 0, 0, 0)
-        top_v_layout.addWidget(self.createTreeWidget())
+        self.setColumnCount(1)
+        tree_header_item = QtWidgets.QTreeWidgetItem()
+        tree_header_item.setText(0, 'FSM')
+        self.setHeaderItem(tree_header_item)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.setItemDelegate(MP2FSMTreeItemDelegate(self, self.data_model))
+        self.customContextMenuRequested.connect(self.showContextMenu)
+        self.currentItemChanged.connect(self.itemSelectionChanged)
 
         self.createTreeItems()
         self.createContextMenu()
 
     def createTreeItems(self):
-        self.custom_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.custom_events_item = QtWidgets.QTreeWidgetItem(self)
         self.custom_events_item.setText(0, "Custom Events (FSM_Send)")
         self.custom_events_item.setData(0, QtCore.Qt.UserRole, 'custom_events')
 
-        self.states_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.states_events_item = QtWidgets.QTreeWidgetItem(self)
         self.states_events_item.setText(0, "States (FSM_Switch)")
         self.states_events_item.setData(0, QtCore.Qt.UserRole, 'states')
 
-        self.timers_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.timers_events_item = QtWidgets.QTreeWidgetItem(self)
         self.timers_events_item.setText(0, "Timers")
         self.timers_events_item.setData(0, QtCore.Qt.UserRole, 'timers')
 
-        self.do_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.do_events_item = QtWidgets.QTreeWidgetItem(self)
         self.do_events_item.setText(0, "DO")
         self.do_events_item.setData(0, QtCore.Qt.UserRole, 'do')
 
-        self.ai_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.ai_events_item = QtWidgets.QTreeWidgetItem(self)
         self.ai_events_item.setText(0, "AI")
         self.ai_events_item.setData(0, QtCore.Qt.UserRole, 'ai')
 
-        self.trigger_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.trigger_events_item = QtWidgets.QTreeWidgetItem(self)
         self.trigger_events_item.setText(0, "Trigger")
         self.trigger_events_item.setData(0, QtCore.Qt.UserRole, 'trigger')
 
-        self.generic_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.generic_events_item = QtWidgets.QTreeWidgetItem(self)
         self.generic_events_item.setText(0, "Generic")
         self.generic_events_item.setData(0, QtCore.Qt.UserRole, 'generic')
 
-        self.animation_events_item = QtWidgets.QTreeWidgetItem(self.tree_widget)
+        self.animation_events_item = QtWidgets.QTreeWidgetItem(self)
         self.animation_events_item.setText(0, "Animation")
         self.animation_events_item.setData(0, QtCore.Qt.UserRole, 'animation')
 
@@ -509,10 +880,10 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
 
     def showContextMenu(self, pos):
 
-        item = self.tree_widget.itemAt(pos)
+        item = self.itemAt(pos)
         self.updateContextMenu(item)
 
-        global_pos = self.tree_widget.mapToGlobal(pos)
+        global_pos = self.mapToGlobal(pos)
         selected_action = self.context_menu.exec_(global_pos)
 
         if selected_action == self.add_custom_state_action:
@@ -523,7 +894,7 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
             if self.data_model is not None:
                 self.data_model.setDefaultState(item.text(0))
         elif selected_action == self.rename_action:
-            self.tree_widget.editItem(item, 0)
+            self.editItem(item, 0)
         elif selected_action == self.add_timer_action:
             self.createNewTimer()
         elif selected_action == self.toggle_timer_type_action:
@@ -561,23 +932,20 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
             self.data_model.removeTimer(item.text(0))
 
         parent.removeChild(item)
-        self.tree_widget.setCurrentItem(parent)
+        self.setCurrentItem(parent)
         self.data_model.broadcastEditEvent(None)
 
     def createNewState(self):
-        new_state = self.data_model.createState()
+        new_state_name = self.data_model.createState()
 
         self.states_events_item.setExpanded(True)
         new_state_item = QtWidgets.QTreeWidgetItem(self.states_events_item)
-        new_state_item.setText(0, new_state.name)
+        new_state_item.setText(0, new_state_name)
         new_state_item.setData(0, QtCore.Qt.UserRole, 'state')
         new_state_item.setFlags(new_state_item.flags() | QtCore.Qt.ItemIsEditable)
 
-        if len(self.data_model.getStates()) == 1:
-            self.data_model.setDefaultState(new_state.name)
-
-        self.tree_widget.setCurrentItem(new_state_item, 0)
-        self.tree_widget.editItem(new_state_item, 0)
+        self.setCurrentItem(new_state_item, 0)
+        self.editItem(new_state_item, 0)
 
     def createNewTimer(self):
         new_timer = self.data_model.createTimer()
@@ -597,8 +965,8 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
         new_timer_on_end_timer.setText(0, 'OnEndTimer')
         new_timer_on_end_timer.setData(0, QtCore.Qt.UserRole, 'timer_event')
 
-        self.tree_widget.setCurrentItem(new_timer_item, 0)
-        self.tree_widget.editItem(new_timer_item, 0)
+        self.setCurrentItem(new_timer_item, 0)
+        self.editItem(new_timer_item, 0)
 
     def changeTimerLength(self, item):
         timer = self.data_model.getTimerByName(item.text(0))
@@ -642,16 +1010,16 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
         self.data_model.toggleTimerType(item.text(0))
 
     def createNewCustomEvent(self):
-        new_event = self.data_model.createCustomEvent()
+        new_event_name = self.data_model.createCustomEvent()
 
         self.custom_events_item.setExpanded(True)
         new_event_item = QtWidgets.QTreeWidgetItem(self.custom_events_item)
-        new_event_item.setText(0, new_event.name)
+        new_event_item.setText(0, new_event_name)
         new_event_item.setData(0, QtCore.Qt.UserRole, 'custom_event')
         new_event_item.setFlags(new_event_item.flags() | QtCore.Qt.ItemIsEditable)
 
-        self.tree_widget.setCurrentItem(new_event_item, 0)
-        self.tree_widget.editItem(new_event_item, 0)
+        self.setCurrentItem(new_event_item, 0)
+        self.editItem(new_event_item, 0)
 
     def itemSelectionChanged(self, current, previous):
         if not current:
@@ -661,7 +1029,7 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
         event_model = None
         item_type = current.data(0, QtCore.Qt.UserRole)
         if item_type == 'state':
-            event_model = self.data_model.getStateByName(current.text(0))
+            event_model = self.data_model.getStateEventByName(current.text(0))
 
         if item_type == 'custom_event':
             event_model = self.data_model.getCustomEventByName(current.text(0))
@@ -675,281 +1043,10 @@ class MP2FSMTreeComponent(QtWidgets.QWidget):
 
         self.data_model.broadcastEditEvent(event_model)
 
-    def createTreeWidget(self):
-        self.tree_widget = QtWidgets.QTreeWidget(self)
-        self.tree_widget.setColumnCount(1)
-        tree_header_item = QtWidgets.QTreeWidgetItem()
-        tree_header_item.setText(0, 'FSM')
-        self.tree_widget.setHeaderItem(tree_header_item)
-        self.tree_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-
-        self.tree_widget.setItemDelegate(MP2FSMTreeItemDelegate(self.tree_widget, self.data_model))
-
-        self.tree_widget.customContextMenuRequested.connect(self.showContextMenu)
-        self.tree_widget.currentItemChanged.connect(self.itemSelectionChanged)
-
-        return self.tree_widget
-
-
-class MP2FSMCodeComponent(QtWidgets.QWidget):
-    def __init__(self, main_window, parent, data_model: MP2FSMDataModel):
-        super(MP2FSMCodeComponent, self).__init__(parent)
-        self.is_updating = True
-        self.main_window = main_window
-        self.data_model = data_model
-        self.current_event_model = None
-        self.before_add_button_widget = None
-        self.before_messages_widget = None
-        self.state_add_button_widget = None
-        self.state_list_widget = None
-        self.state_messages_widget = None
-        self.after_messages_widget = None
-        self.after_add_button_widget = None
-        self.current_state = ''
-
-        top_v_layout = QtWidgets.QVBoxLayout(self)
-        top_v_layout.setContentsMargins(0, 0, 0, 0)
-        top_v_layout.addWidget(self.createSendAlwaysBefore())
-        top_v_layout.addWidget(self.createStateSpecific())
-        top_v_layout.addWidget(self.createSendAlwaysAfter())
-
-        self.update()
-
-        self.data_model.subscribeToEditEvent(self.update)
-
-    def createSendAlwaysBefore(self):
-        self.before_add_button_widget = QtWidgets.QPushButton('Add', self)
-        self.before_messages_widget = QtWidgets.QListWidget(self)
-
-        before_v_layout = QtWidgets.QVBoxLayout(self)
-        before_add_button_size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        before_add_button_size_policy.setHorizontalStretch(0)
-        before_add_button_size_policy.setVerticalStretch(0)
-        before_add_button_size_policy.setHeightForWidth(self.before_add_button_widget.sizePolicy().hasHeightForWidth())
-        self.before_add_button_widget.setSizePolicy(before_add_button_size_policy)
-        self.before_add_button_widget.clicked.connect(self.addSendAlwaysBeforeMessage)
-
-        before_v_layout.addWidget(self.before_add_button_widget)
-        before_v_layout.addWidget(self.before_messages_widget)
-
-        before_group_widget = QtWidgets.QGroupBox("Send Always Before", self)
-        before_group_widget.setLayout(before_v_layout)
-
-        return before_group_widget
-
-    def createSendAlwaysAfter(self):
-        self.after_messages_widget = QtWidgets.QListWidget(self)
-        self.after_add_button_widget = QtWidgets.QPushButton('Add', self)
-
-        after_v_layout = QtWidgets.QVBoxLayout(self)
-
-        after_add_button_size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        after_add_button_size_policy.setHorizontalStretch(0)
-        after_add_button_size_policy.setVerticalStretch(0)
-        after_add_button_size_policy.setHeightForWidth(self.after_add_button_widget.sizePolicy().hasHeightForWidth())
-        self.after_add_button_widget.setSizePolicy(after_add_button_size_policy)
-        self.after_add_button_widget.clicked.connect(self.addSendAlwaysAfterMessage)
-
-        after_v_layout.addWidget(self.after_add_button_widget)
-        after_v_layout.addWidget(self.after_messages_widget)
-
-        after_group_widget = QtWidgets.QGroupBox("Send Always After", self)
-        after_group_widget.setLayout(after_v_layout)
-
-        return after_group_widget
-
-    def createStateSpecific(self):
-        self.state_add_button_widget = QtWidgets.QPushButton('Add', self)
-        self.state_list_widget = QtWidgets.QComboBox(self)
-        self.state_list_widget.currentIndexChanged.connect(self.onStateSelected)
-        self.state_messages_widget = QtWidgets.QListWidget(self)
-
-        state_v_layout = QtWidgets.QVBoxLayout(self)
-        state_h_layout = QtWidgets.QHBoxLayout(self)
-
-        state_add_button_size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        state_add_button_size_policy.setHorizontalStretch(0)
-        state_add_button_size_policy.setVerticalStretch(0)
-        state_add_button_size_policy.setHeightForWidth(self.state_add_button_widget.sizePolicy().hasHeightForWidth())
-        self.state_add_button_widget.setSizePolicy(state_add_button_size_policy)
-        self.state_add_button_widget.clicked.connect(self.addStateSpecificMessage)
-
-        state_h_layout.addWidget(self.state_add_button_widget)
-        state_h_layout.addWidget(self.state_list_widget)
-
-        state_v_layout.addLayout(state_h_layout)
-        state_v_layout.addWidget(self.state_messages_widget)
-
-        state_group_widget = QtWidgets.QGroupBox("State Specific", self)
-        state_group_widget.setLayout(state_v_layout)
-
-        return state_group_widget
-
-    def getNewMessage(self, title):
-        text, ok = QtWidgets.QInputDialog.getText(self.main_window, title, "Enter message:")
-        if not ok:
-            return ''
-
-        if not text:
-            return ''
-
-        item_text = text.strip()
-        if item_text == '':
-            return ''
-
-        return item_text
-
-    def addNewMessage(self, parent, title):
-        item_text = self.getNewMessage(title)
-        if item_text == '':
-            return
-        item = QtWidgets.QListWidgetItem(parent)
-        item.setText(item_text)
-        item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-        parent.setCurrentItem(item)
-        parent.scrollToItem(item)
-
-    def addSendAlwaysBeforeMessage(self, checked):
-        self.addNewMessage(self.before_messages_widget, 'Send Always Before Message')
-
-    def addSendAlwaysAfterMessage(self, checked):
-        self.addNewMessage(self.after_messages_widget, 'Send Always After Message')
-
-    def addStateSpecificMessage(self, checked):
-        self.addNewMessage(self.state_messages_widget, 'State Specific Message')
-
-    def onStateSelected(self, index):
-        if self.is_updating and index != -3:
-            return
-
-        if index != -3 and self.current_state.lower() != self.state_list_widget.currentText().lower():
-            self.saveStateSpecificMessages()
-
-        self.state_messages_widget.clear()
-
-        if index == -1:
-            return
-
-        if self.current_event_model is None:
-            return
-
-        state_name = self.state_list_widget.currentText()
-        self.current_state = state_name
-
-        found_key = ''
-        for key in self.current_event_model.state_specific:
-            if key.lower() == state_name.lower():
-                found_key = key
-
-        if found_key == '':
-            return
-
-        for message in self.current_event_model.state_specific[found_key]:
-            item = QtWidgets.QListWidgetItem(self.state_messages_widget)
-            item.setText(message)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-
-    def saveSendBeforeMessages(self):
-        if self.current_event_model is None:
-            return
-
-        num_messages = self.before_messages_widget.count()
-        messages = []
-        for i in range(num_messages):
-            messages.append(self.before_messages_widget.item(i).text())
-        if self.current_event_model is not None:
-            self.current_event_model.send_before = messages
-
-    def saveSendAfterMessages(self):
-        if self.current_event_model is None:
-            return
-
-        num_messages = self.after_messages_widget.count()
-        messages = []
-        for i in range(num_messages):
-            messages.append(self.after_messages_widget.item(i).text())
-        if self.current_event_model is not None:
-            self.current_event_model.send_after = messages
-
-    def saveStateSpecificMessages(self):
-        if self.current_event_model is None:
-            return
-
-        num_messages = self.state_messages_widget.count()
-        messages = []
-        for i in range(num_messages):
-            messages.append(self.state_messages_widget.item(i).text())
-
-        state_name = self.current_state
-
-        found_key = ''
-        for key in self.current_event_model.state_specific:
-            if key.lower() == state_name.lower():
-                found_key = key
-
-        if found_key == '':
-            found_key = state_name
-
-        if self.current_event_model is not None:
-            self.current_event_model.state_specific[found_key] = messages
-
-    def save(self):
-        self.saveSendBeforeMessages()
-        self.saveStateSpecificMessages()
-        self.saveSendAfterMessages()
-
-    def update(self, event_model=None):
-        self.is_updating = True
-        if self.current_event_model is not None:
-            self.save()
-        self.current_event_model = event_model
-        self.before_add_button_widget.setEnabled(False)
-        self.before_messages_widget.setEnabled(False)
-        self.before_messages_widget.clear()
-        self.state_add_button_widget.setEnabled(False)
-        self.state_list_widget.setEnabled(False)
-        self.state_list_widget.clear()
-        self.state_messages_widget.setEnabled(False)
-        self.state_messages_widget.clear()
-        self.after_messages_widget.setEnabled(False)
-        self.after_messages_widget.clear()
-        self.after_add_button_widget.setEnabled(False)
-
-        if not event_model:
-            self.is_updating = False
-            return
-
-        for message in event_model.send_before:
-            item = QtWidgets.QListWidgetItem(self.before_messages_widget)
-            item.setText(message)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-
-        for message in event_model.send_after:
-            item = QtWidgets.QListWidgetItem(self.after_messages_widget)
-            item.setText(message)
-            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-
-        for state in self.data_model.getStates():
-            self.state_list_widget.addItem(state.name)
-
-        self.current_state = self.state_list_widget.currentText()
-
-        self.before_add_button_widget.setEnabled(True)
-        self.before_messages_widget.setEnabled(True)
-
-        if len(self.data_model.getStates()) > 0:
-            self.state_add_button_widget.setEnabled(True)
-            self.state_list_widget.setEnabled(True)
-            self.state_messages_widget.setEnabled(True)
-            self.onStateSelected(-3)
-
-        self.after_messages_widget.setEnabled(True)
-        self.after_add_button_widget.setEnabled(True)
-        self.is_updating = False
-
 
 class MP2FSMDialog(QtWidgets.QDialog):
     def __init__(self, node_to_edit, attr_to_edit):
+        super().__init__(None)
         self.dialog_buttons = None
         self.data = MP2FSMDataModel()
         self.code_widget = None
@@ -958,11 +1055,12 @@ class MP2FSMDialog(QtWidgets.QDialog):
         self.node_to_edit = node_to_edit
         self.attr_to_edit = attr_to_edit
 
-        maya_window_ptr = omui.MQtUtil.mainWindow()
-        parent = wrapInstance(int(maya_window_ptr), QtWidgets.QWidget)
-        super(MP2FSMDialog, self).__init__(parent)
+        # maya_window_ptr = omui.MQtUtil.mainWindow()
+        # parent = wrapInstance(int(maya_window_ptr), QtWidgets.QWidget)
+        parent = None
+        # super(MP2FSMDialog, self).__init__(parent)
         self.setWindowTitle("Max Payne 2 FSM Editor")
-        self.resize(800, 600)
+        self.resize(1280, 720)
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.mainLayout.setContentsMargins(10, 10, 10, 10)
         self.mainLayout.setSpacing(10)
@@ -970,6 +1068,18 @@ class MP2FSMDialog(QtWidgets.QDialog):
         self.configureUI()
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.setModal(True)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+
+        if key in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
+            event.ignore()
+            return
+
+        if key == QtCore.Qt.Key_Escape:
+            return
+
+        super().keyPressEvent(event)
 
     def createDialogButtons(self):
         self.dialog_buttons = QtWidgets.QDialogButtonBox()
@@ -1028,13 +1138,12 @@ class MP2FSMDialog(QtWidgets.QDialog):
         splitter_widget.setOrientation(QtCore.Qt.Horizontal)
         splitter_widget.setChildrenCollapsible(False)
 
-        self.tree_widget = MP2FSMTreeComponent(self, splitter_widget, self.data)
-        self.code_widget = MP2FSMCodeComponent(self, splitter_widget, self.data)
+        self.tree_widget = MP2FSMTreeWidget(self, splitter_widget, self.data)
+        self.code_widget = MP2FSMTextEditWidget(splitter_widget, self.data)
 
         splitter_widget.addWidget(self.tree_widget)
         splitter_widget.addWidget(self.code_widget)
         self.mainLayout.addWidget(splitter_widget)
-
 
 # 'DO_BulletCollides'
 # 'DO_MovedToInvalidPosition'
@@ -1046,5 +1155,25 @@ class MP2FSMDialog(QtWidgets.QDialog):
 # 'OnStartTimer'
 # 'OnEndTimer'
 
-dialog = MP2FSMDialog(None, "2")
-dialog.show()
+def perform_edit_fsm_action(node_name):
+    print(node_name)
+
+    node_only = node_name.split('.')[0]
+    try:
+        sel = OpenMaya.MSelectionList()
+        sel.add(node_only)
+        node = sel.getDependNode(0)
+    except:
+        return
+
+    my_node = OpenMaya.MFnDependencyNode(node)
+    if my_node:
+        fsm_edit_widow = MP2FSMDialog(my_node, "na_fsm")
+        fsm_edit_widow.show()
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    dialog = MP2FSMDialog(None, "2")
+    dialog.show()
+    sys.exit(app.exec_())
+

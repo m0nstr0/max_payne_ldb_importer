@@ -28,7 +28,7 @@ class MP2NodeWaypoint(OpenMayaUI.MPxLocatorNode):
     @staticmethod
     def initializeBaseAttributes():
         hidden_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeWaypoint.HiddenAttr = hidden_attr.create("Hidden", "Hidden", OpenMaya.MFnNumericData.kBoolean, 0)
+        MP2NodeWaypoint.HiddenAttr = hidden_attr.create("na_hidden", "na_hidden", OpenMaya.MFnNumericData.kBoolean, 0)
         hidden_attr.hidden = False
         hidden_attr.keyable = False
         hidden_attr.writable = True
@@ -36,7 +36,7 @@ class MP2NodeWaypoint(OpenMayaUI.MPxLocatorNode):
         MP2NodeWaypoint.addAttribute(MP2NodeWaypoint.HiddenAttr)
 
         exclude_from_game_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeWaypoint.ExcludeFromGameAttr = exclude_from_game_attr.create("ExcludeFromGame", "ExcludeFromGame",
+        MP2NodeWaypoint.ExcludeFromGameAttr = exclude_from_game_attr.create("na_excludeFromGame", "na_excludeFromGame",
                                                                              OpenMaya.MFnNumericData.kBoolean, 0)
         exclude_from_game_attr.hidden = False
         exclude_from_game_attr.keyable = False
@@ -45,8 +45,8 @@ class MP2NodeWaypoint(OpenMayaUI.MPxLocatorNode):
         MP2NodeWaypoint.addAttribute(MP2NodeWaypoint.ExcludeFromGameAttr)
 
         exclude_from_lighting_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeWaypoint.ExcludeFromLightingAttr = exclude_from_lighting_attr.create("ExcludeFromLighting",
-                                                                                     "ExcludeFromLighting",
+        MP2NodeWaypoint.ExcludeFromLightingAttr = exclude_from_lighting_attr.create("na_excludeFromLighting",
+                                                                                     "na_excludeFromLighting",
                                                                                      OpenMaya.MFnNumericData.kBoolean,
                                                                                      0)
         exclude_from_lighting_attr.hidden = False
@@ -56,8 +56,8 @@ class MP2NodeWaypoint(OpenMayaUI.MPxLocatorNode):
         MP2NodeWaypoint.addAttribute(MP2NodeWaypoint.ExcludeFromLightingAttr)
 
         enable_export_regrouping_attr = OpenMaya.MFnNumericAttribute()
-        MP2NodeWaypoint.EnableExportRegroupingAttr = enable_export_regrouping_attr.create("EnableExportRegrouping",
-                                                                                           "EnableExportRegrouping",
+        MP2NodeWaypoint.EnableExportRegroupingAttr = enable_export_regrouping_attr.create("na_enableExportRegrouping",
+                                                                                           "na_enableExportRegrouping",
                                                                                            OpenMaya.MFnNumericData.kBoolean,
                                                                                            0)
         enable_export_regrouping_attr.hidden = False

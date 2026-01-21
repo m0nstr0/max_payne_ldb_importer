@@ -1,0 +1,34 @@
+global proc AEMP2_Node_PlayerTemplate( string $nodeName )
+{
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Max Payne 2 :: Player" -collapse 0;
+
+        editorTemplate -beginLayout "Base" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -callCustom "AEMP2_Node_PlayerTemplate_create_fsm_edit_button" "AEMP2_Node_PlayerTemplate_update_fsm_edit_button" $nodeName;
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+    editorTemplate -endLayout;
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addExtraControls;
+
+    editorTemplate -endScrollLayout;
+}
+
+//FSM Edit button
+global proc AEMP2_Node_PlayerTemplate_create_fsm_edit_button(string $nodeName)
+{
+    button -label "Edit FSM" -command ("python(\"from max_payne_maya.mp2nodes.mp2_fsm_ui import perform_edit_fsm_action; perform_edit_fsm_action(r'" + $nodeName + "')\")") mp2FsmEditorButton;
+}
+
+global proc AEMP2_Node_PlayerTemplate_update_fsm_edit_button(string $nodeName)
+{
+    button -e -command ("python(\"from max_payne_maya.mp2nodes.mp2_fsm_ui import perform_edit_fsm_action; perform_edit_fsm_action(r'" + $nodeName + "')\")") mp2FsmEditorButton;
+}
+//FSM Edit button
