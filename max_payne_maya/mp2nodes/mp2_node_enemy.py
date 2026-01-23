@@ -12,6 +12,8 @@ class MP2NodeEnemy(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_ENEMY_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeEnemy'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeEnemyDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
+
     DEFAULT_FSM_VALUE = '{"states":{},"default_state":{},"custom_events":{},"events":{"always_send_before":[], "always_send_after":[]"},"timers":{},"animations":{}}'
 
     HiddenAttr = OpenMaya.MObject()
@@ -31,6 +33,35 @@ class MP2NodeEnemy(OpenMayaUI.MPxLocatorNode):
     SkinCommonAttr = OpenMaya.MObject()
     SkinCustomAttr = OpenMaya.MObject()
     SkinUseCustomAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeEnemy.NODE_NAME,
+            MP2NodeEnemy.NODE_ID,
+            MP2NodeEnemy.creator,
+            MP2NodeEnemy.initializer,
+            MP2NodeEnemy.NODE_SUB_CLASS,
+            MP2NodeEnemy.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeEnemy.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeEnemy.NODE_ID)
+        MP2NodeEnemy.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeEnemy.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeEnemy.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeEnemyDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeEnemy.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeEnemy.NODE_DRAW_REGISTRANT_ID)
+
     @staticmethod
     def creator():
         return MP2NodeEnemy()

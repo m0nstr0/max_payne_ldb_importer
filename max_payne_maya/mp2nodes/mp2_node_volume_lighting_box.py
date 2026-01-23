@@ -24,6 +24,7 @@ class MP2NodeVolumeLightingBox(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_VOLUME_LIGHTING_BOX_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeVolumeLightingBox'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeVolumeLightingBoxDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
@@ -34,6 +35,34 @@ class MP2NodeVolumeLightingBox(OpenMayaUI.MPxLocatorNode):
     HeightAttr = OpenMaya.MObject()
     DepthAttr = OpenMaya.MObject()
     ResolutionAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeVolumeLightingBox.NODE_NAME,
+            MP2NodeVolumeLightingBox.NODE_ID,
+            MP2NodeVolumeLightingBox.creator,
+            MP2NodeVolumeLightingBox.initializer,
+            MP2NodeVolumeLightingBox.NODE_SUB_CLASS,
+            MP2NodeVolumeLightingBox.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeVolumeLightingBox.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeVolumeLightingBox.NODE_ID)
+        MP2NodeVolumeLightingBox.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeVolumeLightingBox.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeVolumeLightingBox.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeVolumeLightingBoxDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeVolumeLightingBox.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeVolumeLightingBox.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

@@ -11,6 +11,7 @@ class MP2NodeJumpPoint(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_JUMP_POINT_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeJumpPoint'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeJumpPointDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
@@ -19,6 +20,34 @@ class MP2NodeJumpPoint(OpenMayaUI.MPxLocatorNode):
 
     inputAttr = OpenMaya.MObject()
     outputAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeJumpPoint.NODE_NAME,
+            MP2NodeJumpPoint.NODE_ID,
+            MP2NodeJumpPoint.creator,
+            MP2NodeJumpPoint.initializer,
+            MP2NodeJumpPoint.NODE_SUB_CLASS,
+            MP2NodeJumpPoint.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeJumpPoint.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeJumpPoint.NODE_ID)
+        MP2NodeJumpPoint.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeJumpPoint.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeJumpPoint.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeJumpPointDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeJumpPoint.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeJumpPoint.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

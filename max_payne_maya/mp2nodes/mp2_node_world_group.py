@@ -11,11 +11,40 @@ class MP2NodeWorldGroup(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_WORLD_GROUP_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeWorldGroup'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeWorldGroupDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
     ExcludeFromLightingAttr = OpenMaya.MObject()
     EnableExportRegroupingAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeWorldGroup.NODE_NAME,
+            MP2NodeWorldGroup.NODE_ID,
+            MP2NodeWorldGroup.creator,
+            MP2NodeWorldGroup.initializer,
+            MP2NodeWorldGroup.NODE_SUB_CLASS,
+            MP2NodeWorldGroup.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeWorldGroup.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeWorldGroup.NODE_ID)
+        MP2NodeWorldGroup.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeWorldGroup.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeWorldGroup.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeWorldGroupDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeWorldGroup.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeWorldGroup.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

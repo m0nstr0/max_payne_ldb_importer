@@ -11,12 +11,41 @@ class MP2NodeFSM(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_FSM_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeFSM'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeFSMDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
     ExcludeFromLightingAttr = OpenMaya.MObject()
     EnableExportRegroupingAttr = OpenMaya.MObject()
     FSMAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeFSM.NODE_NAME,
+            MP2NodeFSM.NODE_ID,
+            MP2NodeFSM.creator,
+            MP2NodeFSM.initializer,
+            MP2NodeFSM.NODE_SUB_CLASS,
+            MP2NodeFSM.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeFSM.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeFSM.NODE_ID)
+        MP2NodeFSM.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeFSM.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeFSM.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeFSMDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeFSM.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeFSM.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

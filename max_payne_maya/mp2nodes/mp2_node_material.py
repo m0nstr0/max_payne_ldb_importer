@@ -7,11 +7,10 @@ from max_payne_maya.mp2nodes.mp2_node_ids import MP2_MATERIAL_NODE_ID, MP2_MATER
 class MP2NodeMaterial(OpenMaya.MPxNode):
     NODE_ID = OpenMaya.MTypeId(MP2_MATERIAL_NODE_ID)
     NODE_NAME = MP2_MATERIAL_NODE_NAME
-
     NODE_CLASSIFICATION = 'shader/surface'
-
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeMaterialDrawRegistrantID'
     NODE_DRAW_CLASSIFICATION = 'drawdb/shader/surface/MP2NodeMaterial'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kDependNode
 
     DiffuseTextureAdditionAttr = OpenMaya.MObject()
     CategoryNameAttr = OpenMaya.MObject()
@@ -41,6 +40,38 @@ class MP2NodeMaterial(OpenMaya.MPxNode):
 
     InColorAttr = OpenMaya.MObject()
     OutColorAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeMaterial.NODE_NAME,
+            MP2NodeMaterial.NODE_ID,
+            MP2NodeMaterial.creator,
+            MP2NodeMaterial.initializer,
+            MP2NodeMaterial.NODE_SUB_CLASS,
+            MP2NodeMaterial.NODE_CLASSIFICATION
+        )
+        MP2NodeMaterial.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeMaterial.NODE_ID)
+        MP2NodeMaterial.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerSurfaceShadingNodeOverrideCreator(
+            MP2NodeMaterial.NODE_DRAW_CLASSIFICATION,
+            MP2NodeMaterial.NODE_DRAW_REGISTRANT_ID,
+            MP2NodeMaterialDrawOverride.creator
+        )
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterSurfaceShadingNodeOverrideCreator(
+            MP2NodeMaterial.NODE_DRAW_CLASSIFICATION,
+            MP2NodeMaterial.NODE_DRAW_REGISTRANT_ID
+        )
 
     @staticmethod
     def creator():

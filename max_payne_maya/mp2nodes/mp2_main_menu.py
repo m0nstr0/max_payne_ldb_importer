@@ -1,6 +1,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
+from max_payne_maya.mp2nodes.mp2_export_lv2 import export_lv2
 from max_payne_maya.mp2nodes.mp2_node_ids import MP2_AIN_NODE_NAME, MP2_ENEMY_NODE_NAME, \
     MP2_DYNAMIC_POINT_LIGHT_NODE_NAME, MP2_LEVEL_ITEM_NODE_NAME, MP2_VOLUME_LIGHTING_BOX_NODE_NAME, MP2_FSM_NODE_NAME, \
     MP2_WORLD_GROUP_NODE_NAME, MP2_TRIGGER_NODE_NAME, MP2_PLAYER_NODE_NAME, MP2_JUMP_POINT_NODE_NAME, \
@@ -16,6 +17,50 @@ def show_about(*args):
         button=["OK"],
         defaultButton="OK"
     )
+
+
+
+
+def export_lv2_command(*args):
+    export_lv2()
+
+    # if sel:
+    #     all_children = cmds.listRelatives(sel, allDescendents=True, fullPath=True) or []
+    #     is_first = True
+    #     for node in all_children:
+    #         if is_first and cmds.nodeType(node) != MP2_WORLD_GROUP_NODE_NAME:
+    #             cmds.confirmDialog(
+    #                 title=f"The first node must be of type '{MP2_WORLD_GROUP_NODE_NAME}'.",
+    #                 message="Error",
+    #                 button=["OK"]
+    #             )
+    #             return
+    #
+    #         if cmds.nodeType(node) == MP2_WORLD_GROUP_NODE_NAME:
+    #             if world_group_node is not None:
+    #                 cmds.confirmDialog(
+    #                     title=f"Only one node of type '{MP2_WORLD_GROUP_NODE_NAME}' is allowed.",
+    #                     message="Error",
+    #                     button=["OK"]
+    #                 )
+    #                 return
+    #             world_group_node = node
+    #
+    #         if cmds.nodeType(node) == MP2_PLAYER_NODE_NAME:
+    #             if player_node is not None:
+    #                 cmds.confirmDialog(
+    #                     title=f"Only one node of type '{MP2_PLAYER_NODE_NAME}' is allowed.",
+    #                     message="Error",
+    #                     button=["OK"]
+    #                 )
+    #                 return
+    #             player_node = node
+    #
+    #         is_first = False
+    #
+    #     print(all_children)
+    #     print(cmds.nodeType(all_children[2]))
+
 
 
 def mp2_create_main_menu():
@@ -53,6 +98,14 @@ def mp2_create_main_menu():
     cmds.menuItem(label="Enemy", parent=menu_create, image=MP2_ENEMY_NODE_NAME + '.png', command=lambda *_: cmds.createNode(MP2_ENEMY_NODE_NAME))
     cmds.menuItem(parent=menu_create, divider=True)
     cmds.menuItem(label="Material", parent=menu_create)
+
+    export_menu = cmds.menuItem(
+        label="Export",
+        parent=MENU_NAME,
+        subMenu=True
+    )
+    cmds.menuItem(label="Export to LV2", parent=export_menu, command=export_lv2_command)
+    cmds.menuItem(label="Export to LDB", parent=export_menu, command=lambda *_: cmds.createNode(MP2_FLARE_NODE_NAME))
 
     cmds.menuItem(parent=MENU_NAME, divider=True)
 

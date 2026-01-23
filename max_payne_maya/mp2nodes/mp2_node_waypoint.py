@@ -11,11 +11,40 @@ class MP2NodeWaypoint(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_WAY_POINT_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeWaypoint'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeWaypointDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
     ExcludeFromLightingAttr = OpenMaya.MObject()
     EnableExportRegroupingAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeWaypoint.NODE_NAME,
+            MP2NodeWaypoint.NODE_ID,
+            MP2NodeWaypoint.creator,
+            MP2NodeWaypoint.initializer,
+            MP2NodeWaypoint.NODE_SUB_CLASS,
+            MP2NodeWaypoint.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeWaypoint.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeWaypoint.NODE_ID)
+        MP2NodeWaypoint.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeWaypoint.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeWaypoint.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeWaypointDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeWaypoint.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeWaypoint.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

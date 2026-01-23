@@ -12,6 +12,7 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeTrigger'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeTriggerDrawRegistrantID'
     DEFAULT_FSM_VALUE = '{"states":{},"default_state":{},"custom_events":{},"events":{"always_send_before":[], "always_send_after":[]"},"timers":{},"animations":{}}'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
@@ -29,6 +30,34 @@ class MP2NodeTrigger(OpenMayaUI.MPxLocatorNode):
     ActivatorsAnimationCommonAttr = OpenMaya.MObject()
     ActivatorsAnimationUseCustomAttr = OpenMaya.MObject()
     TriggerFSMAttr = OpenMaya.MObject()
+
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeTrigger.NODE_NAME,
+            MP2NodeTrigger.NODE_ID,
+            MP2NodeTrigger.creator,
+            MP2NodeTrigger.initializer,
+            MP2NodeTrigger.NODE_SUB_CLASS,
+            MP2NodeTrigger.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeTrigger.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeTrigger.NODE_ID)
+        MP2NodeTrigger.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeTrigger.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeTrigger.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeTriggerDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeTrigger.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeTrigger.NODE_DRAW_REGISTRANT_ID)
 
     @staticmethod
     def creator():

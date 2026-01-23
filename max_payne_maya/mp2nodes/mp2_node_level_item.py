@@ -12,6 +12,7 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
     NODE_NAME = MP2_LEVEL_ITEM_NODE_NAME
     NODE_DRAW_CLASSIFICATION = 'drawdb/geometry/MP2NodeLevelItem'
     NODE_DRAW_REGISTRANT_ID = 'MP2NodeLevelItemDrawRegistrantID'
+    NODE_SUB_CLASS = OpenMaya.MPxNode.kLocatorNode
 
     HiddenAttr = OpenMaya.MObject()
     ExcludeFromGameAttr = OpenMaya.MObject()
@@ -22,6 +23,33 @@ class MP2NodeLevelItem(OpenMayaUI.MPxLocatorNode):
     ItemNameCommonAttr = OpenMaya.MObject()
     ItemNameUseCustomAttr = OpenMaya.MObject()
 
+    @staticmethod
+    def registerNode(plugin):
+        plugin.registerNode(
+            MP2NodeLevelItem.NODE_NAME,
+            MP2NodeLevelItem.NODE_ID,
+            MP2NodeLevelItem.creator,
+            MP2NodeLevelItem.initializer,
+            MP2NodeLevelItem.NODE_SUB_CLASS,
+            MP2NodeLevelItem.NODE_DRAW_CLASSIFICATION
+        )
+        MP2NodeLevelItem.registerDrawOverride()
+
+    @staticmethod
+    def deregisterNode(plugin):
+        plugin.deregisterNode(MP2NodeLevelItem.NODE_ID)
+        MP2NodeLevelItem.deregisterDrawOverride()
+
+    @staticmethod
+    def registerDrawOverride():
+        OpenMayaRender.MDrawRegistry.registerDrawOverrideCreator(MP2NodeLevelItem.NODE_DRAW_CLASSIFICATION,
+                                                                 MP2NodeLevelItem.NODE_DRAW_REGISTRANT_ID,
+                                                                 MP2NodeLevelItemDrawOverride.creator)
+
+    @staticmethod
+    def deregisterDrawOverride():
+        OpenMayaRender.MDrawRegistry.deregisterDrawOverrideCreator(MP2NodeLevelItem.NODE_DRAW_CLASSIFICATION,
+                                                                   MP2NodeLevelItem.NODE_DRAW_REGISTRANT_ID)
     @staticmethod
     def creator():
         return MP2NodeLevelItem()
