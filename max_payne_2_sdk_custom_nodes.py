@@ -1,6 +1,6 @@
 import maya.api.OpenMaya as OpenMaya
 from max_payne_maya.mp2nodes.mp2_main_menu import mp2_create_main_menu, mp2_delete_main_menu
-from max_payne_maya.mp2nodes.mp2_node_list import registerNodes, deregisterNodes
+from max_payne_maya.mp2nodes.mp2_node_registrant import registerNodes, deregisterNodes
 
 PLUGIN_NAME = "Max Payne 2 Custom Nodes For LDB Import"
 PLUGIN_COMPANY = "Bolotaev Sergey"

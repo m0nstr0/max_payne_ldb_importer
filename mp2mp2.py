@@ -5,6 +5,7 @@ from max_payne_sdk.lvl2.max_header import packString, packInt
 from max_payne_sdk.lvl2.max_lvl2 import MaxLVL2
 from max_payne_sdk.lvl2.max_material import MaxMaterial
 from max_payne_sdk.lvl2.max_material_category import MaxMaterialCategory
+from max_payne_sdk.lvl2.max_node_mesh import MaxNodeMeshPolygon, MaxNodeMeshTriangle, MaxNodeMesh
 from max_payne_sdk.lvl2.max_texture import MaxTexture
 
 lvl2 = MaxLVL2()
@@ -51,10 +52,6 @@ lvl2.node.children.append(tr_node)
 dpl_node = lvl2.createNodeDynamicPointLight()
 lvl2.node.children.append(dpl_node)
 
-
-
-
-
 with open('default_texture.dds', 'rb') as file:
     tex_data = file.read()
     #tex_data = list(tex_data)
@@ -62,8 +59,31 @@ with open('default_texture.dds', 'rb') as file:
 lvl2.textures_and_materials.textures[0].data = tex_data
 lvl2.textures_and_materials.textures[0].size = len(tex_data)
 
-bytes = lvl2.getBytes()
 
+mesh_node = lvl2.createNodeMesh()
+lvl2.node.children.append(mesh_node)
+
+mesh_node.vertices = [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 0.0, 0.0]]
+
+triangle = MaxNodeMeshTriangle()
+triangle.normal = [0.0, 1.0, 0.0]
+triangle.indices = [0, 1, 2, 3]
+
+mesh_polygon = MaxNodeMeshPolygon()
+mesh_polygon.normal = [0.0, 1.0, 0.0]
+mesh_polygon.normal2unknown = [0.0, 1.0, 0.0]
+mesh_polygon.point_on_plane = [0.0, 0.0, 0.0]
+mesh_polygon.triangles = [triangle]
+mesh_polygon.edges = [[0, 1], [1, 2], [2, 3], [3, 0]]
+mesh_polygon.exit_id = -1
+
+mesh_polygon.material_name = 'Images\default_material.dds'
+mesh_polygon.material_category = 'Default'
+
+mesh_node.polygons = [mesh_polygon]
+
+
+bytes = lvl2.getBytes()
 with open('test_out.lv2', 'wb') as file:
     for i in bytes:
         file.write(i)

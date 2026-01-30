@@ -11,6 +11,7 @@ from max_payne_sdk.lvl2.max_node_flare import MaxNodeFlare
 from max_payne_sdk.lvl2.max_node_fsm import MaxNodeFSM
 from max_payne_sdk.lvl2.max_node_jump_point import MaxNodeJumpPoint
 from max_payne_sdk.lvl2.max_node_level_item import MaxNodeLevelItem
+from max_payne_sdk.lvl2.max_node_mesh import MaxNodeMesh
 from max_payne_sdk.lvl2.max_node_player import MaxNodePlayer
 from max_payne_sdk.lvl2.max_node_trigger import MaxNodeTrigger
 from max_payne_sdk.lvl2.max_node_waypoint import MaxNodeWayPoint
@@ -67,6 +68,9 @@ class MaxLVL2:
         self.node = MaxNodeWorldGroup(self.getNextNodeId(), self.getNextNodeNameWithPrefix('World_Group', True))
         self.node.children.append(MaxNodePlayer(self.getNextNodeId(), self.getNextNodeNameWithPrefix('Player', True)))
 
+    def createNodeMesh(self):
+        return MaxNodeMesh(self.getNextNodeId(), self.getNextNodeNameWithPrefix('Mesh_'))
+
     def createNodeAin(self) -> MaxNodeAin:
         new_node = MaxNodeAin(self.getNextNodeId(), self.getNextNodeNameWithPrefix('AIN_'))
         return new_node
@@ -94,9 +98,6 @@ class MaxLVL2:
     def createNodeLevelItem(self) -> MaxNodeLevelItem:
         new_node = MaxNodeLevelItem(self.getNextNodeId(), self.getNextNodeNameWithPrefix('Level_Item_'))
         return new_node
-
-    def createNodeMesh(self):
-        pass
 
     def createNodePolyGroup(self):
         pass

@@ -2,6 +2,7 @@ import math
 
 import maya.cmds as cmds
 import maya.mel as mel
+import maya.api.OpenMaya as OpenMaya
 
 from max_payne_maya.mp2nodes.mp2_export_lv2.mp2_fill_material import fill_materials
 from max_payne_maya.mp2nodes.mp2_export_lv2.mp2_fill_node import fill_node_base_data, fill_node_with_data
@@ -33,15 +34,28 @@ def build_scene_tree():
             parent = children[0]
             children.pop(0)
 
-        m = cmds.getAttr(parent_node + ".matrix")
+        def cmds_matrix_to_dx9(node):
+            raw = cmds.getAttr(node + ".matrix")
+            m_maya = OpenMaya.MMatrix(raw)
+
+            C = OpenMaya.MMatrix((
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, -1, 0,
+                0, 0, 0, 1
+            ))
+
+            return C * m_maya * C
+
+        m = cmds_matrix_to_dx9(parent_node)
 
         matrix = [
-            m[0:3],
-            m[4:7],
-            m[8:11]
+            [m[0], m[1], m[2]],
+            [m[4], m[5], m[6]],
+            [m[8], m[9], m[10]]
         ]
 
-        translate = [m[12], m[13], m[14]]
+        translate = [m[12], m[13], -m[14]]
 
         bb_min = cmds.getAttr(parent + ".boundingBoxMin")[0]
         bb_max = cmds.getAttr(parent + ".boundingBoxMax")[0]
@@ -55,7 +69,6 @@ def build_scene_tree():
         dz = bb_max[2] - bb_min[2]
 
         radius = 0.5 * math.sqrt(dx * dx + dy * dy + dz * dz)
-
 
         return {
             "name": parent,
@@ -82,6 +95,7 @@ def build_scene_tree():
 
     return node_tree[0]
 
+
 def build_materials(lv2):
     materials_names = []
     dg_materials = cmds.ls(materials=True)
@@ -90,7 +104,8 @@ def build_materials(lv2):
             materials_names.append(material)
     fill_materials(lv2, materials_names)
 
-def create_lv2_node(node_type, lvl2:MaxLVL2):
+
+def create_lv2_node(node_type, lvl2: MaxLVL2):
     nodes = {
         MP2_JUMP_POINT_NODE_NAME: lvl2.createNodeJumpPoint,
         MP2_WAY_POINT_NODE_NAME: lvl2.createNodeWaypoint,
@@ -104,7 +119,14 @@ def create_lv2_node(node_type, lvl2:MaxLVL2):
         MP2_VOLUME_LIGHTING_BOX_NODE_NAME: lvl2.createNodeVolumeLightingBox
     }
 
-    return nodes[node_type]()
+    if node_type in nodes:
+        return nodes[node_type]()
+
+    if node_type == 'mesh':
+        return lvl2.createNodeMesh()
+
+    return None
+
 
 def foreach_nodes(parent, node_tree, lv2):
     for child in node_tree['children']:

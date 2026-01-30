@@ -1,6 +1,7 @@
 import maya.api.OpenMaya as OpenMaya
 
 from max_payne_maya.mp2nodes.mp2_node_ain import MP2NodeAin
+from max_payne_maya.mp2nodes.mp2_node_dynamic_mesh import MP2NodeDynamicMesh
 from max_payne_maya.mp2nodes.mp2_node_dynamic_pointlight import MP2NodeDynamicPointLight
 from max_payne_maya.mp2nodes.mp2_node_enemy import MP2NodeEnemy
 from max_payne_maya.mp2nodes.mp2_node_flare import MP2NodeFlare
@@ -9,6 +10,8 @@ from max_payne_maya.mp2nodes.mp2_node_jump_point import MP2NodeJumpPoint
 from max_payne_maya.mp2nodes.mp2_node_level_item import MP2NodeLevelItem
 from max_payne_maya.mp2nodes.mp2_node_material import MP2NodeMaterial
 from max_payne_maya.mp2nodes.mp2_node_player import MP2NodePlayer
+from max_payne_maya.mp2nodes.mp2_node_room_mesh import MP2NodeRoomMesh
+from max_payne_maya.mp2nodes.mp2_node_static_mesh import MP2NodeStaticMesh
 from max_payne_maya.mp2nodes.mp2_node_trigger import MP2NodeTrigger
 from max_payne_maya.mp2nodes.mp2_node_volume_lighting_box import MP2NodeVolumeLightingBox
 from max_payne_maya.mp2nodes.mp2_node_waypoint import MP2NodeWaypoint
@@ -27,9 +30,15 @@ MP2_NODES = [
     MP2NodeTrigger,
     MP2NodeVolumeLightingBox,
     MP2NodeWaypoint,
-    MP2NodeWorldGroup
+    MP2NodeWorldGroup,
+    MP2NodeStaticMesh,
+    MP2NodeDynamicMesh,
+    MP2NodeRoomMesh,
 ]
 
+def registerClass(cls):
+    global MP2_NODES
+    MP2_NODES.append(cls)
 
 def registerNodes(plugin):
     for node in MP2_NODES:

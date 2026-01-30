@@ -1,0 +1,82 @@
+global proc AEMP2_Node_Trigger_MeshTemplate( string $nodeName )
+{
+    editorTemplate -suppress "na_generateBoundingBoxHull";
+    editorTemplate -suppress "na_gameplayCritical";
+    editorTemplate -suppress "na_roomSoundEnvironmentUseCustom";
+    editorTemplate -suppress "na_roomSoundEnvironmentCustom";
+    editorTemplate -suppress "na_roomSoundEnvironmentCommon";
+    editorTemplate -suppress "inMesh";
+
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Max Payne 2 :: Trigger Mesh" -collapse 0;
+
+        editorTemplate -beginLayout "Base" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Hidden" -addControl "na_hidden";
+                editorTemplate -label "Exclude From Game" -addControl "na_excludeFromGame";
+                editorTemplate -label "Exclude From Lighting" -addControl "na_excludeFromLighting";
+                editorTemplate -label "Enable Export Regrouping" -addControl "na_enableExportRegrouping";
+                editorTemplate -label "Is Flipped" -addControl "na_isFlipped";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "GIS" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Cast No Shadows" -addControl "na_castNoShadows";
+                editorTemplate -label "Ray Tracing" -addControl "na_rayTracing";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "Physics" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Collisions" -addControl "na_collisions";
+                editorTemplate -label "    Bullet Collisions" -addControl "na_bulletCollisions";
+                editorTemplate -label "    Character Collisions" -addControl "na_characterCollisions";
+                editorTemplate -label "    Block Explosions" -addControl "na_blockExplosions";
+                editorTemplate -label "    Generate Convex Hull" -addControl "na_generateConvexHull";
+                editorTemplate -label "    Elevator" -addControl "na_elevator";
+
+                editorTemplate -beginLayout "Physical Material" -collapse 0;
+                    editorTemplate -beginNoOptimize;
+                        editorTemplate -label "Common" -addControl "na_physicalMaterialCommon";
+                        editorTemplate -addSeparator;
+                        editorTemplate -label "Use Custom" -addControl "na_physicalMaterialUseCustom";
+                        editorTemplate -label "Custom" -addControl "na_physicalMaterialCustom";
+                    editorTemplate -endNoOptimize;
+                editorTemplate -endLayout;
+
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "FSM Update Logic" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "FSM Cont Update" -addControl "na_fsmContUpdate";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "Visuals" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Do Not Render" -addControl "na_doNotRender";
+                editorTemplate -label "Use Light Maps" -addControl "na_useLightMaps";
+                editorTemplate -label "    Point Lights Affect" -addControl "na_pointLightsAffect";
+                editorTemplate -label "No Decals" -addControl "na_noDecals";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+    editorTemplate -endLayout;
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addExtraControls;
+
+    editorTemplate -endScrollLayout;
+}

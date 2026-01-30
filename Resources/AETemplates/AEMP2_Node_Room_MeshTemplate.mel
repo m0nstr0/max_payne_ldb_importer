@@ -1,0 +1,69 @@
+global proc AEMP2_Node_Room_MeshTemplate( string $nodeName )
+{
+    editorTemplate -suppress "na_isFlipped";
+    editorTemplate -suppress "na_collisions";
+    editorTemplate -suppress "na_bulletCollisions";
+    editorTemplate -suppress "na_characterCollisions";
+    editorTemplate -suppress "na_generateBoundingBoxHull";
+    editorTemplate -suppress "na_gameplayCritical";
+    editorTemplate -suppress "na_blockExplosions";
+    editorTemplate -suppress "na_elevator";
+    editorTemplate -suppress "na_physicalMaterialUseCustom";
+    editorTemplate -suppress "na_physicalMaterialCustom";
+    editorTemplate -suppress "na_physicalMaterialCommon";
+    editorTemplate -suppress "na_generateConvexHull";
+    editorTemplate -suppress "na_useLightMaps";
+    editorTemplate -suppress "na_pointLightsAffect";
+    editorTemplate -suppress "na_noDecals";
+    editorTemplate -suppress "na_fsmContUpdate";
+    editorTemplate -suppress "inMesh";
+
+    editorTemplate -beginScrollLayout;
+
+    editorTemplate -beginLayout "Max Payne 2 :: Room Mesh" -collapse 0;
+
+        editorTemplate -beginLayout "Base" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Hidden" -addControl "na_hidden";
+                editorTemplate -label "Exclude From Game" -addControl "na_excludeFromGame";
+                editorTemplate -label "Exclude From Lighting" -addControl "na_excludeFromLighting";
+                editorTemplate -label "Enable Export Regrouping" -addControl "na_enableExportRegrouping";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "GIS" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Cast No Shadows" -addControl "na_castNoShadows";
+                editorTemplate -label "Ray Tracing" -addControl "na_rayTracing";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "Room Sound Environment" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Common" -addControl "na_roomSoundEnvironmentCommon";
+                editorTemplate -addSeparator;
+                editorTemplate -label "Use Custom" -addControl "na_roomSoundEnvironmentUseCustom";
+                editorTemplate -label "Custom" -addControl "na_roomSoundEnvironmentCustom";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+        editorTemplate -addSeparator;
+
+        editorTemplate -beginLayout "Visuals" -collapse 0;
+            editorTemplate -beginNoOptimize;
+                editorTemplate -label "Do Not Render" -addControl "na_doNotRender";
+            editorTemplate -endNoOptimize;
+        editorTemplate -endLayout;
+
+    editorTemplate -endLayout;
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addExtraControls;
+
+    editorTemplate -endScrollLayout;
+}
