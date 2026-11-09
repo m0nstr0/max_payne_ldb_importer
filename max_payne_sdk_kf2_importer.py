@@ -3,6 +3,7 @@ import sys
 import max_payne_sdk.max_kf2 as max_kf2
 import maya.cmds as mc
 import max_payne_maya.kf2 as maya_kf2
+from max_payne_sdk.file_types import has_extension
 
 PLUGIN_NAME = "Max Payne KF2 KFS SKD Import"
 PLUGIN_COMPANY = "Bolotaev Sergey"
@@ -30,13 +31,15 @@ class MaxPayneKF2Translator(OpenMayaMPx.MPxFileTranslator):
         return FILE_KF2_EXT
 
     def identifyFile(self, file_obj, buffer, size):
-        return OpenMayaMPx.MPxFileTranslator.kIsMyFileType
+        return (OpenMayaMPx.MPxFileTranslator.kIsMyFileType
+                if has_extension(file_obj.expandedFullName(), {'kf2', 'kfs', 'skd'})
+                else OpenMayaMPx.MPxFileTranslator.kNotMyFileType)
 
     def reader(self, file, options, mode):
         try:
             kf2 = max_kf2.MaxKF2Reader().parse(file.expandedFullName())
-            dialog = maya_kf2.KF2ImportDialog(kf2)
-            dialog.show()
+            self.dialog = maya_kf2.KF2ImportDialog(kf2)
+            self.dialog.show()
         except Exception:
             sys.stderr.write("Failed to import file: %s" % file.expandedFullName())
             mc.confirmDialog(message = "Failed to import file: %s" % file.expandedFullName())

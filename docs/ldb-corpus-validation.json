@@ -1,0 +1,25 @@
+{
+  "scope": "Headless parsing only; no Maya scene or game qualification",
+  "python": "3.15.0 (tags/v3.15.0:d220409, Oct  9 2026, 11:55:56) [MSC v.1951 64 bit (AMD64)]",
+  "counts": {
+    ".ldb:pass": 56
+  },
+  "inventories": [
+    {
+      "name": "original-ldb-inputs.json",
+      "sha256": "a3bc1c01b4f315e0509f1fbe1a807dfb8c49136716fc1d3730af651bb17848d0"
+    }
+  ],
+  "accepted_count": 56,
+  "accepted_manifest_sha256": "6726737a2f0a6751bbd0fcaa7d0fd5f3f2dd352f8c812cdc6a03029b6b4ee9f1",
+  "failure_count": 0,
+  "failure_groups": [],
+  "games": {
+    "MP1": 28,
+    "MP2": 28
+  },
+  "unlocated_original_mp2_inputs": [
+    "09_Upper_East_Side.ldb",
+    "10_Police_Station.ldb"
+  ]
+}

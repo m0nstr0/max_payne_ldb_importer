@@ -1,5 +1,8 @@
 # Table of contents
 
+* [2026-11-09 reader corrections and evidence scope](./REVIEW_CORRECTIONS.MD)
+* [PCX / SCX image decoding](./IMAGES.MD)
+
 * [Max Payne data types](./DATA_TYPES.MD)
 * File specifications:
   * [Max Payne 1 *.LDB - Game Level](./MAXPAYNE_LDB.MD)

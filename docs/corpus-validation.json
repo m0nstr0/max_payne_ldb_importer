@@ -1,0 +1,23 @@
+{
+  "scope": "Headless parsing only; no Maya scene or game qualification",
+  "python": "3.15.0 (tags/v3.15.0:d220409, Oct  9 2026, 11:55:56) [MSC v.1951 64 bit (AMD64)]",
+  "counts": {
+    ".kf2:pass": 2899,
+    ".kfs:pass": 195,
+    ".skd:pass": 116
+  },
+  "inventories": [
+    {
+      "name": "inventory.json",
+      "sha256": "cda0e7f5ea550b47f75cf8b504900726c7d0afe364b650a2f6e1cd742826a9a4"
+    },
+    {
+      "name": "inventory.json",
+      "sha256": "3d92938fb966ac9dc602f749bd944b2cc01d0cd6193b37c5b8aff70d25f9b2c9"
+    }
+  ],
+  "accepted_count": 3210,
+  "accepted_manifest_sha256": "a4ecd0dd1e8b4747f7833b1a595424c5b1e1e27ef8bf84bd2c200aaec5d3f5b6",
+  "failure_count": 0,
+  "failure_groups": []
+}

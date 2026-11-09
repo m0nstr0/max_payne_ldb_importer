@@ -1,4 +1,5 @@
 from __future__ import annotations
+from max_payne_sdk.binary import FormatError, read_exact, read_count
 
 from max_payne_sdk.ldb_common.max_ldb_interface import MaxLDBInterface
 from max_payne_sdk.ldb_common.max_ldb_reader_interface import MaxLDBReaderInterface
@@ -32,11 +33,11 @@ class MaxLDBReader(MaxLDBReaderInterface):
     def parseBSP(self, f) -> None:
         # Block header
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getBsp().getVertices().add(BSPVertex(*parseType(f)))
         # Block header
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getBsp().getPolygons().add(
                 BSPPolygon(*[
                     parseType(f),
@@ -48,7 +49,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
                 ]))
         # Block header
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getBsp().getNodes().add(
                 BSPNode(*[
                     Vertex(*parseType(f)),
@@ -62,26 +63,27 @@ class MaxLDBReader(MaxLDBReaderInterface):
                 ]))
         # Block header
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getBsp().getIndices().add(BSPPolygonIndex(parseType(f)))
 
     # textures, lightmaps, material_reader properties etc
     def parseMaterials(self, f) -> None:
         # Textures
         # Block header
-        parseType(f)
-        for i in range(parseType(f)):
+        if parseType(f) != 32:
+            raise FormatError("Unsupported MP1 LDB version (expected 32)")
+        for i in range(read_count(f)):
             self.ldb.getTextures().add(
                 Texture(*[
                     parseType(f),
                     parseType(f),
-                    f.read(parseType(f))
+                    read_exact(f, read_count(f))
                 ]))
 
         # Block header
         f.read(1)
         # in the order how they are applied to the polygons
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             material_id = parseType(f)
             f.read(1)
             self.ldb.getMaterials().add(Material(i, material_id, parseType(f), parseType(f)))
@@ -89,16 +91,16 @@ class MaxLDBReader(MaxLDBReaderInterface):
         # Block header
         f.read(1)
         # in the order how they were in MAX-ED
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             f.read(1)
             category_name = parseType(f)
             material_name = parseType(f)
             material_id = parseType(f)
 
         # material_reader properties, materials properties also contain materials that haven't been used in the level, skip them
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             category_name = parseType(f)
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 material = self.ldb.getMaterials().findMaterialByCategoryAndName(category_name, parseType(f))
                 # skip unused materials
                 if material == None:
@@ -112,21 +114,21 @@ class MaxLDBReader(MaxLDBReaderInterface):
                 material.setProperties(parseType(f), parseType(f))
 
         # lightmaps
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getLightMaps().add(
                 LightMapTexture(*[
                     parseType(f),
                     parseType(f),
-                    f.read(parseType(f))
+                    read_exact(f, read_count(f))
                 ]))
 
     # portals aka exits hierarchy
     def parseExits(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             exit_name = parseType(f)
             # vertices
             vertices = VertexContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 vertices.add(Vertex(*parseType(f)))
             normal = parseType(f)
             transform = parseType(f)
@@ -135,9 +137,9 @@ class MaxLDBReader(MaxLDBReaderInterface):
             parent_room_name = parseType(f)
             # some bsp info idk how to work with it
             f.read(1)
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 f.read(1)
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     parseType(f)
             self.ldb.getExits().add(
                 Exit(exit_name, vertices, normal, transform, room_id, parent_room_id, parent_room_name))
@@ -146,7 +148,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
     def parseStaticMeshes(self, f) -> None:
         # uv attributes
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getStaticMeshes().getTextureVertices().add(
                 TextureVertex(*[
                     parseType(f),
@@ -156,21 +158,21 @@ class MaxLDBReader(MaxLDBReaderInterface):
                     parseType(f)
                 ]))
         # geometry
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             static_mesh_id = parseType(f)
             # vertices
             vertices = VertexContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 vertices.add(Vertex(*parseType(f)))
             # normals
             f.read(1)
             normals = VertexContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 normals.add(Vertex(*parseType(f)))
             transform = parseType(f)
             # polygons
             polygons = PolygonContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 polygons.add(Polygon(
                     parseType(f),
                     parseType(f),
@@ -185,7 +187,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
                 ))
             f.read(1)
             # seems another bsp thing
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 parseType(f)  # int
                 parseType(f)  # float
             self.ldb.getStaticMeshes().add(StaticMesh(
@@ -197,7 +199,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
             ))
 
     def parseDynamicLights(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getDynamicLights().add(DynamicLight(
                 parseType(f),
                 EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
@@ -215,112 +217,112 @@ class MaxLDBReader(MaxLDBReaderInterface):
             ))
 
     def parseWaypoints(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getWaypoints().add(Waypoint(
                 parseType(f),
                 EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
                 parseType(f)))
 
     def parseFSMs(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             shared_name = parseType(f)
             properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
             # custom states
             f.read(1)
             states = FSMStateContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 states.add(parseType(f))
             states.setDefault(parseType(f))
             # startup event before message
             f.read(1)
             startup_before = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 startup_before.add(parseType(f))
             # unk seems startup for state specific
             f.read(1)
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 parseType(f)
                 # startup event after message
             f.read(1)
             startup_after = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 startup_after.add(parseType(f))
             # custom states switch messages
             f.read(1)
             state_switch = FSMEventContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 state_name = parseType(f)
                 # before
                 f.read(1)
                 before = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     before.add(parseType(f))
                 # state specific
                 f.read(1)
                 state_specific = FSMStateSpecificMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     state_name = parseType(f)
                     f.read(1)
                     messages = FSMMessageContainer()
-                    for l in range(parseType(f)):
+                    for l in range(read_count(f)):
                         messages.add(parseType(f))
                     state_specific.add(FSMStateSpecificMessage(state_name, messages))
                 # after
                 f.read(1)
                 after = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     after.add(parseType(f))
                 state_switch.add(FSMEvent(state_name, before, state_specific, after))
             # custom string messages
             f.read(1)
             custom_string = FSMEventContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 state_name = parseType(f)
                 # before
                 f.read(1)
                 before = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     before.add(parseType(f))
                 # state specific
                 f.read(1)
                 state_specific = FSMStateSpecificMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     state_name = parseType(f)
                     f.read(1)
                     messages = FSMMessageContainer()
-                    for l in range(parseType(f)):
+                    for l in range(read_count(f)):
                         messages.add(parseType(f))
                     state_specific.add(FSMStateSpecificMessage(state_name, messages))
                 # after
                 f.read(1)
                 after = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     after.add(parseType(f))
                 custom_string.add(FSMEvent(state_name, before, state_specific, after))
             # entity specific messages
             f.read(1)
             entity_specific = FSMEventContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 state_name = parseType(f)
                 # before
                 f.read(1)
                 before = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     before.add(parseType(f))
                 # state specific
                 f.read(1)
                 state_specific = FSMStateSpecificMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     state_name = parseType(f)
                     f.read(1)
                     messages = FSMMessageContainer()
-                    for l in range(parseType(f)):
+                    for l in range(read_count(f)):
                         messages.add(parseType(f))
                     state_specific.add(FSMStateSpecificMessage(state_name, messages))
                 # after
                 f.read(1)
                 after = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     after.add(parseType(f))
                 entity_specific.add(FSMEvent(state_name, before, state_specific, after))
             self.ldb.getFSMs().add(
@@ -328,32 +330,32 @@ class MaxLDBReader(MaxLDBReaderInterface):
                     entity_specific))
 
     def parseCharacters(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             shared_name = parseType(f)
             properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
             character_name = parseType(f)
             f.read(1)
             startup_before = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 startup_before.add(parseType(f))
             f.read(1)
             on_death_before = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 on_death_before.add(parseType(f))
             f.read(1)
             on_activate_before = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 on_activate_before.add(parseType(f))
             f.read(1)
             on_special_before = FSMMessageContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 on_special_before.add(parseType(f))
             self.ldb.getCharacters().add(
                 Character(shared_name, properties, character_name, startup_before, on_death_before, on_activate_before,
                           on_special_before))
 
     def parseTriggers(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             shared_name = parseType(f)
             properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
             radius = parseType(f)
@@ -364,7 +366,7 @@ class MaxLDBReader(MaxLDBReaderInterface):
     def parseDynamicMeshes(self, f) -> None:
         # uv attributes
         f.read(1)
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getDynamicMeshes().getTextureVertices().add(
                 TextureVertex(*[
                     parseType(f),
@@ -374,21 +376,21 @@ class MaxLDBReader(MaxLDBReaderInterface):
                     parseType(f)
                 ]))
         # geometry
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             shared_name = parseType(f)
             # vertices
             vertices = VertexContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 vertices.add(Vertex(*parseType(f)))
             # normals
             f.read(1)
             normals = VertexContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 normals.add(Vertex(*parseType(f)))
             transform = parseType(f)
             # polygons
             polygons = PolygonContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 polygons.add(Polygon(
                     parseType(f),
                     parseType(f),
@@ -407,22 +409,22 @@ class MaxLDBReader(MaxLDBReaderInterface):
             properties = EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f))
             # animation
             animations = AnimationContainer()
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 animation_name = parseType(f)
                 length_in_secs = parseType(f)
                 start_transform = parseType(f)
                 end_transform = parseType(f)
                 f.read(1)
                 leaving_first_frame = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     leaving_first_frame.add(parseType(f))
                 f.read(1)
                 returning_first_frame = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     returning_first_frame.add(parseType(f))
                 f.read(1)
                 reaching_second_frame = FSMMessageContainer()
-                for k in range(parseType(f)):
+                for k in range(read_count(f)):
                     reaching_second_frame.add(parseType(f))
                 # translation graph
                 parseType(f)  # header
@@ -471,14 +473,14 @@ class MaxLDBReader(MaxLDBReaderInterface):
             ))
 
     def parseItems(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getItems().add(Item(
                 parseType(f),
                 EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
                 parseType(f)))
 
     def parsePointLights(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             self.ldb.getPointlights().add(PointLight(
                 parseType(f),
                 EntityProperties(parseType(f), parseType(f), parseType(f), parseType(f), parseType(f)),
@@ -490,57 +492,57 @@ class MaxLDBReader(MaxLDBReaderInterface):
                 parseType(f)))
 
     def parseRooms(self, f) -> None:
-        for i in range(parseType(f)):
+        for i in range(read_count(f)):
             id = parseType(f)
             # static meshes ids
             f.read(1)
             static_meshes: list[int] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 static_meshes.append(parseType(f))
             # dynamic lights
             f.read(1)
             dynamic_lights: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 dynamic_lights.append(parseType(f))
             # exits
             f.read(1)
             exits: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 exits.append(parseType(f))
             # start points
             f.read(1)
             start_points: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 start_points.append(parseType(f))
             # fsms
             f.read(1)
             fsms: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 fsms.append(parseType(f))
             # characters
             f.read(1)
             characters: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 characters.append(parseType(f))
             # triggers
             f.read(1)
             triggers: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 triggers.append(parseType(f))
             # dynamic meshes
             f.read(1)
             dynamic_meshes: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 dynamic_meshes.append(parseType(f))
             # items
             f.read(1)
             level_items: list[str] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 level_items.append(parseType(f))
             # pointlights
             f.read(1)
             point_lights: list[int] = []
-            for j in range(parseType(f)):
+            for j in range(read_count(f)):
                 point_lights.append(parseType(f))
             room_name = parseType(f)
             ai_net_density = parseType(f)
@@ -572,21 +574,20 @@ class MaxLDBReader(MaxLDBReaderInterface):
 
     def parse(self) -> MaxLDBInterface:
         self.ldb: MaxLDB = MaxLDB()
-        try:
-            with open(self.file_path, "rb") as f:
-                self.parseBSP(f)
-                self.parseMaterials(f)
-                self.parseExits(f)
-                self.parseStaticMeshes(f)
-                self.parseDynamicLights(f)
-                self.parseWaypoints(f)
-                self.parseFSMs(f)
-                self.parseCharacters(f)
-                self.parseTriggers(f)
-                self.parseDynamicMeshes(f)
-                self.parseItems(f)
-                self.parsePointLights(f)
-                self.parseRooms(f)
-        except IOError:
-            print("Error While Opening the file! %s" % self.file_path)
+        with open(self.file_path, "rb") as f:
+            self.parseBSP(f)
+            self.parseMaterials(f)
+            self.parseExits(f)
+            self.parseStaticMeshes(f)
+            self.parseDynamicLights(f)
+            self.parseWaypoints(f)
+            self.parseFSMs(f)
+            self.parseCharacters(f)
+            self.parseTriggers(f)
+            self.parseDynamicMeshes(f)
+            self.parseItems(f)
+            self.parsePointLights(f)
+            self.parseRooms(f)
+            if f.read(1):
+                raise FormatError("Unexpected trailing data after MP1 LDB rooms")
         return self.ldb

@@ -56,7 +56,7 @@ class MaterialChunkReader(kf2_reader.KF2ReaderBase):
 
         has_opacity_texture = max_type.parseType(f)
         opacity_texture = None
-        if has_bump_texture > 0:
+        if has_opacity_texture > 0:
             kf2_texture_chunk = self.readChunk(f)
             opacity_texture = kf2_texture.TextureChunkReader().create(f, kf2_type.TEXTURE, kf2_texture_chunk)
 

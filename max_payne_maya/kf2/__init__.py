@@ -8,6 +8,8 @@ import maya.api.OpenMaya as OpenMaya
 import maya.api.OpenMayaAnim as OpenMayaAnim
 import math
 import os
+from max_payne_maya.skin_weights import dense_weights
+from max_payne_sdk.images.export import convert_texture_file
 
 class KF2ImportDialogUI(QtWidgets.QDialog):
     def __init__(self):
@@ -81,7 +83,7 @@ class KF2ImportDialogUI(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.importOptsGroupBox)
 
     def onChooseTextureDirectoy(self):
-        self.textureDirectory.insert(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory'))
+        self.textureDirectory.setText(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory'))
 
     def createMaterialOpts(self):
         self.textureDirectory = QtWidgets.QLineEdit()
@@ -221,7 +223,12 @@ class KF2ImportDialog(KF2ImportDialogUI):
 
                 if material.diffuse_texture is not None and len(material.diffuse_texture.textures) > 0:
                     diffuse_file_node = mc.shadingNode("file", asTexture = True, name = material.name + "_diffuse")
-                    mc.setAttr("%s.fileTextureName" % diffuse_file_node, os.path.join(self.textureDirectory.text(), material.diffuse_texture.textures[0]), type = "string")
+                    source = os.path.join(self.textureDirectory.text(),
+                                          material.diffuse_texture.textures[0].replace('\\', os.sep))
+                    output = os.path.join(mc.workspace(query=True, rootDirectory=True),
+                                          'sourceimages', 'max_payne_import')
+                    mc.setAttr("%s.fileTextureName" % diffuse_file_node,
+                               convert_texture_file(source, output), type="string")
                     mc.connectAttr("%s.outColor" % diffuse_file_node, "%s.color" % shader)
 
                 #alpha_file_node = mc.shadingNode("file", asTexture = True, name = material.name + "_alpha")
@@ -338,52 +345,44 @@ class KF2ImportDialog(KF2ImportDialogUI):
                 mc.setKeyframe(animation_object, at = "scaleZ", ott = "step")
 
     def importSkin(self):
-        mp_node_names = mc.ls("*.mp_node_name", o=True)
+        scene_nodes = {}
+        for node in mc.ls("*.mp_node_name", o=True, long=True) or []:
+            name = mc.getAttr(node + ".mp_node_name").lower()
+            if name in scene_nodes:
+                raise ValueError("Ambiguous source node name: %s" % name)
+            scene_nodes[name] = node
+
         for skin in self.kf2.getSkins():
-            skeleton_object_names_dict = {}
-            skeleton_object_names = []
-            for i in range(len(skin.skeleton_object_names)):
-                for mp_node_name in mp_node_names:
-                    if skin.skeleton_object_names[i].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
-                        skeleton_object_names_dict[mp_node_name.lower()] = i
-                        skeleton_object_names.append(mp_node_name)
-                        break
-            skin_object_name = ""
-            for mp_node_name in mp_node_names:
-                if skin.skin_object_names[0].lower() == mc.getAttr(mp_node_name + ".mp_node_name").lower():
-                    skin_object_name = mp_node_name
-                    break
-            mc.select(skeleton_object_names)
-            mc.select(skin_object_name, add=True)
-            skin_cluster_name = mc.skinCluster()
-            skin_object_dag = OpenMaya.MGlobal.getSelectionListByName(skin_object_name).getDagPath(0)
-            skin_fn = OpenMayaAnim.MFnSkinCluster(OpenMaya.MGlobal.getSelectionListByName(skin_cluster_name[0]).getDependNode(0))
-            skin_id_to_cluster_id = {}
-            for bone_dag in skin_fn.influenceObjects():
-                skin_id_to_cluster_id[skeleton_object_names_dict[bone_dag.partialPathName().lower()]] = skin_fn.indexForInfluenceObject(bone_dag)
-
-            zero_weights = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
-            zero_influences = OpenMaya.MIntArray([x for x in range(len(skin_id_to_cluster_id.values()))])
-
-            influences = {}
-            weights = {}
-            for skin_vertex in skin.skin_vertices:
-                bones_set = {*skin_vertex.vertex_bone_indices}
-                influences[skin_vertex.vertex_index] = OpenMaya.MIntArray()
-                weights[skin_vertex.vertex_index] = OpenMaya.MDoubleArray([0.0 for i in range(len(skin_id_to_cluster_id.values()))])
-                for bone_index in skin_vertex.vertex_bone_indices:
-                    influences[skin_vertex.vertex_index].append(skin_id_to_cluster_id[bone_index])
-                for i in range(len(skin_vertex.vertex_weights)):
-                    weights[skin_vertex.vertex_index][i] = skin_vertex.vertex_weights[i]
-                for i in skin_id_to_cluster_id.values():
-                    if i not in bones_set:
-                        influences[skin_vertex.vertex_index].append(i)
-
-            for component in OpenMaya.MItGeometry(skin_object_dag):
-                if component.index() not in influences:
-                    skin_fn.setWeights(skin_object_dag, component.currentItem(), zero_influences, zero_weights, normalize = False, returnOldWeights = False)
-                else:
-                    skin_fn.setWeights(skin_object_dag, component.currentItem(), influences[component.index()], weights[component.index()], normalize = False, returnOldWeights = False)
+            if len(skin.skin_object_names) != 1:
+                raise ValueError("Skin import currently requires exactly one skin object")
+            skeleton = [scene_nodes[name.lower()] for name in skin.skeleton_object_names]
+            skin_object = scene_nodes[skin.skin_object_names[0].lower()]
+            dag = OpenMaya.MGlobal.getSelectionListByName(skin_object).getDagPath(0)
+            dag.extendToShape()
+            vertex_count = OpenMaya.MFnMesh(dag).numVertices
+            if any(vertex.vertex_index >= vertex_count for vertex in skin.skin_vertices):
+                raise ValueError("SKD vertex index exceeds target mesh vertex count")
+            if skin.version == 1 and len(skin.skin_vertices) != vertex_count:
+                raise ValueError("SKD packed vertex count does not match target mesh")
+            cluster = mc.skinCluster(skeleton, skin_object, toSelectedBones=True)[0]
+            fn = OpenMayaAnim.MFnSkinCluster(
+                OpenMaya.MGlobal.getSelectionListByName(cluster).getDependNode(0))
+            source_ids = {name: index for index, name in enumerate(skeleton)}
+            # setWeights uses dense physical indices, not sparse matrix plug IDs.
+            source_to_physical = {
+                source_ids[bone.fullPathName()]: physical
+                for physical, bone in enumerate(fn.influenceObjects())
+            }
+            count = len(source_to_physical)
+            indices = OpenMaya.MIntArray(range(count))
+            weights = {vertex.vertex_index: dense_weights(vertex, source_to_physical, count)
+                       for vertex in skin.skin_vertices}
+            iterator = OpenMaya.MItGeometry(dag)
+            while not iterator.isDone():
+                fn.setWeights(dag, iterator.currentItem(), indices,
+                              OpenMaya.MDoubleArray(weights.get(iterator.index(), [0.0] * count)),
+                              normalize=False, returnOldWeights=False)
+                iterator.next()
 
     def onStartImport(self):
         if self.isSkeletonCheckBox.checkState() == QtCore.Qt.Checked:

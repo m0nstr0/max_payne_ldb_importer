@@ -1,4 +1,5 @@
 import max_payne_sdk.max_type_reader as mr
+from max_payne_sdk.binary import FormatError, read_exact
 
 MAX_TYPE_STRING = b'\x0D'
 
@@ -34,12 +35,16 @@ MAX_TYPE_HANDLERS = {
 
 
 def parseType(f):
-    typeID = f.read(1)
+    offset = f.tell()
+    typeID = read_exact(f, 1)
     if typeID == MAX_TYPE_STRING:
-        return MAX_TYPE_HANDLERS[MAX_TYPE_STRING](f, MAX_TYPE_HANDLERS[f.read(1)](f))
+        length_tag = read_exact(f, 1)
+        if length_tag not in (b'\x02', b'\x12', b'\x13', b'\x14'):
+            raise FormatError("Expected signed string length at 0x%x" % offset)
+        return mr.parseString(f, MAX_TYPE_HANDLERS[length_tag](f))
     if typeID in MAX_TYPE_HANDLERS:
         return MAX_TYPE_HANDLERS[typeID](f)
-    raise Exception("Undefined Type Tag", typeID.hex())
+    raise FormatError("Undefined type tag %s at 0x%x" % (typeID.hex(), offset))
 
 
 def parseFloat(f) -> float:

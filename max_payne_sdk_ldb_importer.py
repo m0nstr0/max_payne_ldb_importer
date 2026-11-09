@@ -4,6 +4,7 @@ from maya.OpenMaya import MGlobal
 import sys
 from max_payne_maya.ldb import LDBImporter
 import maya.cmds as mc
+from max_payne_sdk.file_types import has_extension
 
 
 
@@ -28,7 +29,9 @@ class MaxPayneLDBFileTranslator(OpenMayaMPx.MPxFileTranslator):
         return "ldb"
 
     def identifyFile(self, file_obj, buffer, size):
-        return OpenMayaMPx.MPxFileTranslator.kIsMyFileType
+        return (OpenMayaMPx.MPxFileTranslator.kIsMyFileType
+                if has_extension(file_obj.expandedFullName(), {'ldb'})
+                else OpenMayaMPx.MPxFileTranslator.kNotMyFileType)
 
     def calculateItems(self, ldb):
         num_ops = len(ldb.getMaterials().materials)
@@ -45,7 +48,7 @@ class MaxPayneLDBFileTranslator(OpenMayaMPx.MPxFileTranslator):
         try:
             LDBImporter().doImport(file.expandedFullName())
         except Exception as error:
-            MGlobal.displayError(error)
+            MGlobal.displayError(str(error))
             sys.stderr.write("Failed to import file: %s" % file.expandedFullName())
             mc.confirmDialog(message="Failed to import file: %s" % file.expandedFullName())
             raise

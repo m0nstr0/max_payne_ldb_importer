@@ -3,3 +3,6 @@ data
 __pycache__
 /venv/
 .idea
+
+*.py[cod]
+.venv/

@@ -1,0 +1,62 @@
+{
+  "scope": "Headless parsing only; no Maya scene or game qualification",
+  "python": "3.15.0 (tags/v3.15.0:d220409, Oct  9 2026, 11:55:56) [MSC v.1951 64 bit (AMD64)]",
+  "counts": {
+    ".kf2:pass": 2540,
+    ".kf2:fail": 359,
+    ".kfs:pass": 183,
+    ".kfs:fail": 12,
+    ".skd:pass": 116
+  },
+  "inventories": [
+    {
+      "name": "inventory.json",
+      "sha256": "cda0e7f5ea550b47f75cf8b504900726c7d0afe364b650a2f6e1cd742826a9a4"
+    },
+    {
+      "name": "inventory.json",
+      "sha256": "3d92938fb966ac9dc602f749bd944b2cc01d0cd6193b37c5b8aff70d25f9b2c9"
+    }
+  ],
+  "accepted_count": 2839,
+  "accepted_manifest_sha256": "11777890a247d54b60ad80dc24a9cc3e538a2ae67f0c88e2c99cea6a34ddffb8",
+  "failure_count": 371,
+  "failure_groups": [
+    {
+      "error": "ValueError: Unknown chunk tag id 08",
+      "count": 349,
+      "example": {
+        "name": "P1L0a_001.kf2",
+        "sha256": "ca27b82c3684985b505a51d40f097d432725c92bf2cf4dafbbbde46921c6ecc0",
+        "error": "ValueError: Unknown chunk tag id 08"
+      }
+    },
+    {
+      "error": "Exception: ('Undefined Type Tag', '0c')",
+      "count": 20,
+      "example": {
+        "name": "blood_pool_default.kf2",
+        "sha256": "b8aaf8cfb5742fac7173e7d9667ac578108df240c98b0c73b084ba131d7cbcaa",
+        "error": "Exception: ('Undefined Type Tag', '0c')"
+      }
+    },
+    {
+      "error": "ValueError: Unknown chunk version 0",
+      "count": 1,
+      "example": {
+        "name": "shades01_lod0.kfs",
+        "sha256": "3b465a6c47ce752a82cc599b3cabec8fd319b150e033a7bc6f63899c1553c821",
+        "error": "ValueError: Unknown chunk version 0"
+      }
+    },
+    {
+      "error": "ZeroDivisionError: division by zero",
+      "count": 1,
+      "example": {
+        "name": "ModelingPose.kfs",
+        "sha256": "881dfa89337e64fd56019768433c8940b7f01fbd097de046607ff28521e8c019",
+        "error": "ZeroDivisionError: division by zero"
+      }
+    }
+  ]
+}

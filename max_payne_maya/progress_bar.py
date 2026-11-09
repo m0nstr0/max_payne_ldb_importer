@@ -6,13 +6,17 @@ __PROGRESS_DELTA__: float = 1.0
 __MESSAGE__: str = ""
 
 
+class ImportCancelled(Exception):
+    """Stop the complete import, including subsequent phases."""
+
+
 def init(num_ops: int) -> None:
     global __NUM_OPS__
     global __PROGRESS_AMOUNT__
     global __PROGRESS_DELTA__
     global __MESSAGE__
     __NUM_OPS__ = num_ops
-    __PROGRESS_DELTA__ = 100.0 / __NUM_OPS__
+    __PROGRESS_DELTA__ = 100.0 / max(1, __NUM_OPS__)
     __PROGRESS_AMOUNT__ = 0
 
 
@@ -37,9 +41,7 @@ def update() -> bool:
     global __MESSAGE__
     __PROGRESS_AMOUNT__ = __PROGRESS_AMOUNT__ + __PROGRESS_DELTA__
     if mc.progressWindow(query=True, isCancelled=True):
-        hide()
-        mc.confirmDialog(message="File import was canceled")
-        return False
+        raise ImportCancelled()
     if __PROGRESS_AMOUNT__ == 0:
         mc.progressWindow(title="Importing MaxPayne Level",
                           progress=0,
@@ -47,7 +49,7 @@ def update() -> bool:
                           isInterruptable=True)
         return True
     if __PROGRESS_AMOUNT__ >= 100:
-        hide()
+        mc.progressWindow(edit=True, progress=100, status=__MESSAGE__)
         return True
     mc.progressWindow(edit=True, progress=__PROGRESS_AMOUNT__, status=__MESSAGE__)
     return True
