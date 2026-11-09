@@ -1,13 +1,14 @@
 import struct 
+from max_payne_sdk.binary import read_exact
 
 def parseInt(f, bytes_to_read, is_unsigned):
-    bytes = f.read(bytes_to_read)
+    bytes = read_exact(f, bytes_to_read)
     if is_unsigned:
         return int.from_bytes(bytes, byteorder='little', signed=False)
     return int.from_bytes(bytes, byteorder='little', signed=True)
 
 def parseFloat(f, bytes_to_read):
-    bytes = f.read(bytes_to_read)
+    bytes = read_exact(f, bytes_to_read)
     if bytes_to_read == 4:
         return struct.unpack("<f", bytes)[0]
     if bytes_to_read == 8:
@@ -48,4 +49,5 @@ def parseMatrix(f, bytes_to_read):
         ]
 
 def parseString(f, letters_num):
-    return f.read(letters_num).decode("utf-8")
+    # A reversible byte view: narrow source strings are not guaranteed UTF-8.
+    return read_exact(f, letters_num).decode("latin-1")

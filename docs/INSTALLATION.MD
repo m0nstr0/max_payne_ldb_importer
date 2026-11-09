@@ -16,12 +16,10 @@ You will need:
 
 # Installation:
 
-To install, first install ```Pillow``` using the [Maya's Python 3 interpreter](https://knowledge.autodesk.com/support/maya/learn-explore/caas/CloudHelp/cloudhelp/2022/ENU/Maya-Scripting/files/GUID-D64ACA64-2566-42B3-BE0F-BCE843A1702F-htm.html)
-```bash
-$> ./mayapy -m pip install Pillow
-```
+No additional Python packages are required. PCX and SCX textures are decoded
+by the bundled SDK and written as TGA images for Maya.
 
-Put the ```max_payne_sdk_ldb_importer.py``` file into the ```plug-ins``` directory:
+Put both ```max_payne_sdk_ldb_importer.py``` and ```max_payne_sdk_kf2_importer.py``` files into the ```plug-ins``` directory:
 
 Windows:
 

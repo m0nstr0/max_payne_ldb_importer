@@ -9,10 +9,10 @@ class CameraChunkReader(kf2_reader.KF2ReaderBase):
         return [0]
 
     def parse(self, f, kf2_chunk: kf2_type.KF2ChunkHeader):
-        kf2_chunk = self.readChunk(f)
+        node_chunk = self.readChunk(f)
         return kf2_type.Camera(
             kf2_chunk.version,
-            kf2_node.NodeChunkReader().create(f, kf2_type.NODE, kf2_chunk),
+            kf2_node.NodeChunkReader().create(f, kf2_type.NODE, node_chunk),
             max_type.parseType(f),
             max_type.parseType(f),
             max_type.parseType(f))

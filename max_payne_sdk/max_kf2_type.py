@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 CHUNK_HEADER_ID = b'\x0C'
 MATERIAL_LIST = 0x0001000f
@@ -160,13 +160,6 @@ class KeyframeAnimation:
     maintain_matrix_scaling: bool
 
 @dataclass
-class Geometry:
-    version: int
-    vertices: []
-    normals: []
-    vertices_per_primitive: []
-
-@dataclass
 class Polygon:
     version: int
     num_vertices: int
@@ -224,6 +217,7 @@ class Mesh:
     uv_mapping: [] #list[UVMappingV1]
     reference_to_data: RefferenceToData
     smoothing: Smoothing
+    unknown_chunks: list = field(default_factory=list)
 
 @dataclass
 class SkinVertex:
@@ -237,6 +231,9 @@ class Skin:
     skin_object_names: []
     skeleton_object_names: []
     skin_vertices: []
+    primitive_vertex_counts: list = field(default_factory=list)
+    primitive_vertex_offsets: list = field(default_factory=list)
+    legacy_vertex_vectors: list = field(default_factory=list)
 
 
 

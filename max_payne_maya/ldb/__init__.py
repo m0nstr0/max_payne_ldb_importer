@@ -17,7 +17,7 @@ class LDBImporter:
             dialogStyle=1,
             fileMode=3
         )
-        if directory_path is not None and directory_path != "":
+        if directory_path:
             return str(directory_path[0])
         return ""
 
@@ -39,10 +39,10 @@ class LDBImporter:
             progress_bar.init(self.calcAmountOfActions(ldb_proxy))
             materials_dict = material.processMaterials(ldb_proxy, texture_directory)
             MayaLDBMeshlOps(ldb_proxy, materials_dict).processGeometry()
-        except Exception as error:
+        except progress_bar.ImportCancelled:
+            mc.confirmDialog(message="File import was canceled")
+            return
+        finally:
             progress_bar.hide()
-            raise error
-
-        progress_bar.hide()
         mc.confirmDialog(message="File was imported")
         return

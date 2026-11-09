@@ -1,0 +1,133 @@
+{
+  "scope": "Supplied loose PCX textures; RGBA agrees with pre-existing C++ BakeTexture.hpp decoder. No original/native image runtime execution.",
+  "pass": 18,
+  "fail": 0,
+  "files": [
+    {
+      "name": "AdultContent_alpha.pcx",
+      "sha256": "608468f0a2476ed5c95cb004ef28d69af49b4d72c3746bd7f4b79092281738a6",
+      "width": 128,
+      "height": 128,
+      "rgba_sha256": "4964f3115de5ac75bbdf94648161b514f568e26da9b1124068cc12daed647153"
+    },
+    {
+      "name": "Cardboard.pcx",
+      "sha256": "3614b370cd30221e738d0fe96218edea9dfc1d0be54199c319083fe163faeb24",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "1364b1d6709b033315657822e79bf04c30e6b534aafbf376fe0d4065e57b73e0"
+    },
+    {
+      "name": "Carpet.pcx",
+      "sha256": "1e8417171fa0faf029ac04fa23401c7bb4d1b2997df040ea5bd1926b1db215a4",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "8105e599f51119480839e8641e79a599a5ff60ffa81f780e47f54800a5710ea9"
+    },
+    {
+      "name": "default.pcx",
+      "sha256": "6ebb36bc8bb0b63863b4bdb86ab9c76d3214592f57a4fb99591eb8847adc2779",
+      "width": 128,
+      "height": 128,
+      "rgba_sha256": "7417cc82454a739cf458db71710e3ecec428e6d8f7827397a38feeed786ff29b"
+    },
+    {
+      "name": "Gravel.pcx",
+      "sha256": "ebf034bc8c57667c401151eb4563769d97782d0205077e801f606fc62f4bf22b",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "8fd69269309512e301ec93150aadcbd2311dbd5784e1af91022a2fa56b5343e0"
+    },
+    {
+      "name": "Metal.pcx",
+      "sha256": "6789bcdaf570601275d9aef4bfa2befd4e7cbed07123d1afb1761f8b48673de7",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "d5df0c8fea8d4b6a112f1cf36a6f80a13c7f14c15f7d31f3a7f70672954d1ed6"
+    },
+    {
+      "name": "Metal_Hollow.pcx",
+      "sha256": "b3ed936932b53e76a4a822f0c0110871ff3dca16accef41805d13ce87aa9a65a",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "38bb8b348e344670118c9a1e10986bd6a05ed6c6b2df0c71e3b598bf2d58bc60"
+    },
+    {
+      "name": "Metal_Solid.pcx",
+      "sha256": "b625e6ad95208adbb55ca6ae68a5e9b264d0c417f4e6aff7a8fd824828ecbd68",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "67eb582984f3ab82ed4ad6427e3f653d0ac920153a3ea076752940b278fb5a2a"
+    },
+    {
+      "name": "Noise.pcx",
+      "sha256": "fb8bcc76e05bcb98994a2fe4b4c6c3a4f4c2ee0911bafd968dd508cbe1157f22",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "daa02f4bfb52c0a6a3813de3082770a567e9451d392c199fe39f1c4b919602c1"
+    },
+    {
+      "name": "Paper.pcx",
+      "sha256": "200534d5e503a11a1addf42dbf6c176628858a3e931b7c795d4713bfea34c701",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "806aff3c6e9a453587f88434291dd572ff09eee0e120fc89ac6ec8bced09c245"
+    },
+    {
+      "name": "Rock.pcx",
+      "sha256": "79329e5c9b94fa9a63d95e3927f95ac689fb2a0e3cfeef97d7c7d02bdef20ec3",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "d321d54f6096274f7a97146e5ee1540df0aced7d60b3d64e90b0ffec01164379"
+    },
+    {
+      "name": "Snow.pcx",
+      "sha256": "f5dc2c6cc219f47e9e31e43a28f04136d9f5580f7c35b30a10c9bc11efb73eb6",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "bdd2c468ddd76392ca3acbfc3c173ffa5d055254984bc949352b06bfb4b1f74c"
+    },
+    {
+      "name": "Stucco.pcx",
+      "sha256": "2fdf81e1d673a0728a8d27720ec8bd02f9c0d6bd760f561055a54e1f9c707e06",
+      "width": 128,
+      "height": 128,
+      "rgba_sha256": "4605b7124b38e7eb8c17210a6e66a0c08ff86a2a8d7b2ed0da5b4badd8378a03"
+    },
+    {
+      "name": "Wood.pcx",
+      "sha256": "bd7d0743b15d5809dd071f4bf84fd97a251e826613e1584a2da5ad3a27cd28e4",
+      "width": 128,
+      "height": 128,
+      "rgba_sha256": "352530c22776d3457dea0b2c3d1bf15ebe7d7b287c7432a25ad9f9eb2a05f929"
+    },
+    {
+      "name": "FootShadow.pcx",
+      "sha256": "24df44cb05adfd95b9d53befa1bab05a8b3a2e7928a2befd588169c204b806a7",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "62fb561c59d0cea247fc588f3311ee665375f35d8675b186e2792cb7dfcff88c"
+    },
+    {
+      "name": "FootShadow_alpha.pcx",
+      "sha256": "97e0d5309bb086f5e621399b810755238229cb616f1f7e637354aba73d127868",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "edbfaee5075eb26060cc84f47c467f5ed0e6dcdfec8d077f17ad3d63a7045acc"
+    },
+    {
+      "name": "Foam_alpha.pcx",
+      "sha256": "2dfe273d33cfa3a0f6624416523ea8956d6cbb01a343e869076cdb5e7c934694",
+      "width": 64,
+      "height": 64,
+      "rgba_sha256": "f9ae67c1fb95ecf582bfa2a685889f596a75bf50c460e9921bc6e8dc8e8e881a"
+    },
+    {
+      "name": "Glass_Shards_alpha.pcx",
+      "sha256": "574fd3a7b83209f004bb8db819b22055c56b43a9821bfdf0b35b1c036f1227ba",
+      "width": 128,
+      "height": 128,
+      "rgba_sha256": "1f497cba1301ba6117ab2d3ef3e8963ba14c2e249b8414dae3054bb2937d5bd8"
+    }
+  ]
+}

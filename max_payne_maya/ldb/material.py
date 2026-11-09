@@ -1,7 +1,8 @@
 import maya.cmds as mc
 import os
-from pathlib import Path
-from PIL import Image
+from pathlib import PureWindowsPath
+from max_payne_sdk.images.export import prepare_texture
+import hashlib
 import sys
 import max_payne_maya.progress_bar as progress_bar
 
@@ -20,7 +21,8 @@ def createHyperShadeGraph(material_proxy: MayaMaterialProxy, diffuse_texture_pat
         diffuse_node = mc.shadingNode("file", asTexture=True, name=material_proxy.name + "_diffuse")
         mc.setAttr("%s.fileTextureName" % diffuse_node, diffuse_texture_path, type="string")
         mc.connectAttr("%s.outColor" % diffuse_node, "%s.color" % shader)
-        if material_proxy.properties is not None and material_proxy.properties.use_alpha_channel:
+        if (not alpha_texture_path and material_proxy.properties is not None
+                and material_proxy.properties.use_alpha_channel):
             mc.connectAttr("%s.outTransparency" % diffuse_node, "%s.transparency" % shader)
 
     if alpha_texture_path != "":
@@ -51,42 +53,32 @@ def getUniqueFileNameAndPath(texture_directory: str, base_file_name: str, ext: s
     file_name = base_file_name
     i = 0
     while os.path.exists(os.path.join(texture_directory, file_name + '.' + ext)):
-        file_name = file_name + str(i)
         i = i + 1
+        file_name = base_file_name + '_' + str(i)
     return file_name, os.path.join(texture_directory, file_name + "." + ext)
 
 
 def dumpTextureData(texture_directory: str, texture_proxy: MayaTextureProxy) -> str:
     global __TEXTURES_CACHE__
 
-    if texture_proxy.file_path in __TEXTURES_CACHE__:
-        return __TEXTURES_CACHE__[texture_proxy.file_path]
+    cache_key = (os.path.abspath(texture_directory), texture_proxy.file_path, texture_proxy.file_type_name,
+                 hashlib.sha256(texture_proxy.data).digest())
+    if cache_key in __TEXTURES_CACHE__:
+        return __TEXTURES_CACHE__[cache_key]
+
+    image_data, extension = prepare_texture(texture_proxy.data, texture_proxy.file_type_name)
 
     file_name, file_path = getUniqueFileNameAndPath(texture_directory,
-                                                    Path(texture_proxy.file_path).stem,
-                                                    texture_proxy.file_type_name)
+                                                    PureWindowsPath(texture_proxy.file_path).stem,
+                                                    extension)
     try:
         with open(file_path, "wb") as f:
-            f.write(texture_proxy.data)
+            f.write(image_data)
     except IOError:
         sys.stderr.write("Error opening file %s for reading" % file_path)
         raise
 
-    if texture_proxy.file_type_name == "pcx":
-        try:
-            with Image.open(file_path) as im:
-                file_name, file_path = getUniqueFileNameAndPath(texture_directory, file_name, 'png')
-                im.save(file_path)
-        except OSError:
-            sys.stderr.write("Error converting file %s to png" % file_path)
-            raise
-
-    if texture_proxy.file_type_name == "scx":
-        sys.stdout.write(
-            "The level contains scx file. This format is not supported. Empty material_reader will be used")
-        return ""
-
-    __TEXTURES_CACHE__[texture_proxy.file_path] = file_path
+    __TEXTURES_CACHE__[cache_key] = file_path
 
     return file_path
 
