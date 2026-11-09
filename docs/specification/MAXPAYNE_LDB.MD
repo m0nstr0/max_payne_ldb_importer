@@ -1,899 +1,399 @@
-# Max Payne 1 *.LDB file specification (Game Levels)
+# Max Payne 1 LDB version 32
 
-## Table of contents
+LDB is the compiled game-level format. It differs from the editable
+[LVL format](MAXPAYNE_LVL.MD) and from [MP2 LDB](MAXPAYNE2_LDB.MD).
+This page describes revision 32. Use [DATA_TYPES.MD](DATA_TYPES.MD) for tagged
+values. There is no `LDB1` magic before the first section.
 
-* [File Structure](#file-structure)
-* [BSP](#bsp)
-* [File Version](#file-version)
-* [Materials](#materials)
-* [Exits](#exits-portals)
-* [Static Meshes](#static-meshes)
-* [Static Lights](#static-lights)
-* [Waypoints](#waypoints)
-* [FSM](#fsm-scripts)
-* [Characters](#characters)
-* [Triggers](#triggers)
-* [Dynamic Meshes](#dynamic-meshes)
-* [Items](#items)
-* [Point Lights](#point-lights)
-* [Rooms](#rooms)
-  
-## File Structure
+## Notation and section order
 
-> This specification is actual for file version 32
- 
-> This document uses a pseudocode to describe the file structure.
+`Vector(T)` means raw marker `1c`, TInt count, then that many T records.
+`Entries(K,V)` means TInt count followed by that many key/value pairs; it has
+no map marker unless one is shown. `Map(K,V)` adds a raw `1f` marker before
+Entries. Keys are stored values, not implicit array positions.
 
-> Please read ["Max Payne data types"](./DATA_TYPES.MD) document to get to know about Max Payne types.
-
-The file has the following structure:
-
-```
-    [BSP]
-    [File Version]
-    [Materials]
-    [Exits]
-    [Static Meshes]
-    [Static Lights]
-    [Waypoints]
-    [FSM]
-    [Characters]
-    [Triggers]
-    [Dynamic Meshes]
-    [Items]
-    [Point Lights]
-    [Rooms]
+```text
+Vector(TVector3f) bspVertices
+Vector(BspPolygon) bspPolygons
+Vector(BspNode) bspNodes
+Vector(TInt) bspPolygonIndices
+TInt version = 32
+Entries(TString, Image) materialTextures
+MaterialReferences
+MaterialAliases
+Entries(TString, MaterialCategory) materialCategories
+Entries(TInt, Image) lightmaps
+Entries(TString, Exit) exits
+Vector(TextureVertex) staticTextureVertices
+Entries(TInt, StaticMesh) staticMeshes
+Entries(TString, StaticLight) staticLights
+Entries(TString, Startpoint) startpoints
+Entries(TString, Fsm) fsms
+Entries(TString, Character) characters
+Entries(TString, Trigger) triggers
+Vector(TextureVertex) dynamicTextureVertices
+Entries(TString, DynamicMesh) dynamicMeshes
+Entries(TString, LevelItem) levelItems
+Entries(TInt, PointLight) pointLights
+Entries(TInt, Room) rooms
+EOF
 ```
 
-### BSP
+Do not move the version before the BSP pools or the room table before the
+object tables. A count-based section is not a KF2-style size-bounded chunk.
 
-Max Payne uses BSP algorithm to divide the level and check for collisions. 
-BSP block contains vertices, polygons, left half space, right half space etc.
+## BSP records and index domains
 
-1. BSP Vertices:
+```text
+BspPolygon:
+    TInt vertexStart, vertexCount
+    TInt polygonId, meshId
+    TVector3f normal
+    TVector3f pointOnPlane
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_vertices;
-    M_Vector3 vertices[number_of_vertices];
-  } BSPVertices;
+BspNode:
+    TVector3f planeNormal
+    TVector3f pointOnPlane
+    Halfspace front
+    Halfspace back
+
+Halfspace:
+    TInt polygonIndexStart
+    TInt polygonIndexCount
+    TInt childNode
+
+BspSpan:
+    TInt firstPolygon, polygonCount
+    TInt firstNode, nodeCount
 ```
 
-2. BSP Polygons:
+A room or dynamic mesh owns one BspSpan. Its root is local node 0, stored at
+`bspNodes[firstNode]`. `childNode` is local to that owner's node span; -1 means
+no child. A halfspace's polygon-index span addresses the global index pool.
+Each value in that span is a local polygon ordinal:
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_polygons;
-    struct {
-      M_Int start_bsp_vertex_indx;
-      M_Int number_of_vertices_in_polygon;
-      M_Int polygon_id_within_group;
-      M_Int group_id;
-      M_Vector3 polygon_normal;
-      M_Vector3 polygon_pivot;
-    } Polygon[number_of_polygons];
-  } BSPPolygons;
-```
-3. BSP Nodes
-
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_nodes;
-    struct {
-      M_Vector3 node_transform_or_orientation;
-      M_Vector3 node_position;
-      struct {
-        M_Int start_indx_in_bsp_polygon_indx;
-        M_Int num_polygons_in_space;
-        M_Int next_bsp_node;
-      } half_space_1;
-      struct {
-        M_Int start_indx_in_bsp_polygon_indx;
-        M_Int num_polygons_in_space;
-        M_Int next_bsp_node;
-      } half_space_2;
-    } BSPNode[number_of_nodes];
-  } BSPNodes;
+```text
+polygon = bspPolygons[firstPolygon + bspPolygonIndices[slot]]
+node = bspNodes[firstNode + localNode]
+vertex = bspVertices[polygon.vertexStart + corner]
 ```
 
-4. BSP Polygons Indices
+Check each index in its own domain. A nonempty body needs a valid root; do not
+silently replace a missing tree with a flat scan. The two vectors in a node
+are a plane normal and a point on that plane, not bounding-box corners.
+The polygon normal and point define its own oriented collision plane.
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_polygon_indices;
-    M_Int indices[number_of_polygon_indices];
-  } BSPPolygonIndex;
+## How BSP collision works
+
+The tree narrows the search to finite collision polygons. It is not simply a
+set of solid and empty leaves. A leaf holds polygon references; no separate
+solid/empty flag is established by these records. A closed visual mesh alone
+therefore does not define the result of every physical query.
+
+### 1. Prepare the query
+
+Bring the moving shape into the collision body's local coordinate system.
+Use a sphere with center `C` and radius `r`, or a symmetric capsule with axis
+endpoints `C-A` and `C+A`, where A is the half-axis vector. Keep the query's
+collision-channel mask. Rendering visibility, material drawing and physical
+collision channels are separate controls.
+
+### 2. Walk the tree
+
+At a node, compute signed distance `d = dot(C-P, N)`. A negative distance
+selects the back side; zero selects the front side. Visit the near side first.
+A sphere reaches a split plane by its radius. A capsule also reaches it by
+`abs(dot(N,A))`. When the shape or its requested motion reaches both sides,
+visit the required polygon spans and the far child as well.
+
+The observed capsule sweep uses a node reach of
+`1.002 * (r + abs(dot(N,A)))`. Stationary contact collection has separate
+query margins: its broad search uses `r + length(A) + 0.02`, and its node
+plane test uses `r + 0.04`. These are algorithm tolerances, not extra LDB fields.
+Do not reuse a tolerance from one query type as a universal collision radius.
+
+Polygon-list order matters. Keep the stored order of spans, polygons, edges
+and vertices. Later sweep tests can receive an endpoint already shortened by
+an earlier test. Sorting all candidate triangle hits by distance changes this
+behavior.
+
+### 3. Apply the polygon gates
+
+Resolve the polygon's source mesh/polygon identity to its material category.
+The game builds a collision mask from category properties, including character,
+projectile, camera and AI channels. The material-derived mask is runtime data;
+it is not another stored field in BspPolygon. A query must intersect that mask.
+
+For the observed stationary capsule contact path, the center must be strictly
+in front of the polygon: `dot(C-polygonPoint, polygonNormal) > 0`. A shell can
+fully contain a capsule without this path reporting overlap when the center is
+behind every outward-facing polygon. Do not replace this rule with AABB
+containment or odd/even ray counting.
+
+### 4. Test the finite features
+
+Testing the infinite plane is not enough. The contact path first clips the
+capsule axis against the finite convex face, then checks finite edge cylinders,
+then vertex spheres. It emits at most one contact per admitted polygon, using
+the first admitted edge or vertex in source order. A boundary-only clipped
+axis falls through to the feature tests.
+
+The capsule contact envelope is `r + 0.02`, but contact separation is computed
+from the actual feature distance minus the original radius. Negative means
+overlap, zero means tangency and positive means a nearby separated contact.
+Exact tangency is allowed by the observed inside-object contact check.
+A sphere has its own face-projection and edge tests; treating it as a capsule
+with a zero-length axis does not reproduce every boundary case.
+
+### 5. Sweep and return a result
+
+A moving query starts with the requested endpoint. Candidate polygons also
+require a front-facing start, motion toward the plane, a source vertex ahead
+along the motion and an intersecting material mask. The sweep tests the finite
+face and analytic edge/vertex features, shortening the endpoint as it goes.
+It does not sample a capsule axis with a fixed set of spheres.
+
+| Result | Meaning |
+| ---: | --- |
+| 0 | This query did not block the requested motion |
+| 1 | A collision retained a shortened endpoint and contact information |
+| 2 | The attempted move is rejected at its original start; propagate immediately |
+
+Initial overlap in a feature test can produce result 2. It does not imply a
+new, automatically calculated push-out point. Capsule and sphere sweeps also
+have different internal comparison details; do not assume one universal
+nearest-hit metric for both.
+
+### 6. Apply the caller's response
+
+Sliding, contact margins, gravity, moving-object transport and room changes
+belong to the caller. They are not stored in the BSP record. Physical room
+traversal clips a move against the current room's BSP before portal traversal.
+An editor's room-selection BSP is a different structure and must not replace
+this runtime collision tree.
+
+A geometric ray is also distinct from the game's physical PointObject, whose
+observed sphere-query radius is 0.04 metres. Changing serialized vertices to
+bake that radius or a character contact margin into the level changes geometry.
+These notes describe the observed MP1 query paths, not every physics behavior
+or exact floating-point result on every game build.
+
+## Images and materials
+
+```text
+Image:
+    TUInt imageFormat
+    TInt byteCount
+    raw u8 imageBytes[byteCount]
+
+MaterialReferences:
+    raw u8 marker = 1f
+    TInt count
+    repeat count:
+        TInt materialId
+        raw u8 pairMarker = 25
+        TString categoryName, materialName
+
+MaterialAliases:
+    raw u8 marker = 1f
+    TInt count
+    repeat count:
+        raw u8 pairMarker = 25
+        TString categoryName, materialName
+        TInt materialId
+
+MaterialCategory:
+    Entries(TString, Material) materials
+
+Material:
+    TString diffuseTextureName
+    TString alphaTextureName
+    TBool alphaTest
+    TBool adultContent
 ```
 
-### File Version
+Known image codes include 0 TGA, 2 SCX, 3 PCX, 4 JPEG and 5 DDS. The image has
+its own encoded structure; it is not a raw RGB array. See [IMAGES.MD](IMAGES.MD).
+Material and lightmap IDs are keys. -1 can mark an absent lightmap. An alpha
+image is separate from both the diffuse image and lightmap data. Category
+collision and drawing rules also come from the external `materials.txt`.
 
-1. File Version
+## Portals
 
-```c
-  M_Int file_version;
+```text
+Exit:
+    TUInt vertexCount
+    TVector3f vertices[vertexCount]
+    TVector3f normal
+    TMatrix4x3f transform
+    TInt parentRoomId, destinationRoomId
+    TString destinationExitName
+    Vector(Vector(TInt)) convexRegions
 ```
 
-### Materials
+Convex-region indices address this exit's vertex array. The destination exit
+name identifies the reverse exit. Preserve both room IDs and this name instead
+of guessing a pair from geometry alone.
 
-1. Textures List
+## Render geometry
 
-```c
-  struct {
-    M_Int number_of_textures;
-    struct {
-      M_String sorce_file_name;
-      M_Unsigned_Int file_type; //0x00 - TGA, 0x02 - SCX, 0x03 - PCX, 0x04 - JPG, 0x05 - DDS
-      M_Int file_size;
-      unsigned byte texture_file_data[file_size];
-    } Texture[number_of_textures];
-  } Textures;
+```text
+TextureVertex:
+    TInt vertexIndex
+    TVector2f uv, lightmapUv
+    TUInt neighborFlags
+    TBool smooth
+
+StaticMesh:
+    TUInt vertexCount
+    TVector3f positions[vertexCount]
+    Vector(TVector3f) normals
+    TMatrix4x3f transform
+    Entries(TInt, RenderPolygon) polygons
+    Map(TInt, TVector3f) initialRadiosity
+
+RenderPolygon:
+    TInt textureVertexStart, vertexCount
+    TVector3f normal
+    TUInt engineMaterialType
+    TInt materialId, lightmapId
+    TFloat maxEdgeLength, maxAngle
+    TInt smoothingGroup
 ```
 
-2. Material Categories
+For each polygon corner, read a TextureVertex from the matching static or
+dynamic corner pool. Its `vertexIndex` addresses the owning mesh's positions
+and normals; its UVs belong to that corner. Do not index positions directly
+with a corner-pool offset. Polygon IDs, material IDs and lightmap IDs are keys.
+Stored polygons do not have an independent triangle-index array.
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
-    M_Int number_of_categories;
-    struct {
-      M_Int material_id;
-      unsigned byte type_tag; //0x25 - This is Max Payne's custom implementation of the std::pair container 
-      M_String category_name;
-      M_String material_name;
-    } material_category[number_of_categories];
-  } MaterialCategories;    
-```
-3. Material Categories Sorted
+In neighborFlags, low 23 bits identify the neighbor polygon, bit 23 is crease
+and high eight bits identify the neighbor edge. `ffffffff` means no neighbor.
+`smooth` is not vertex alpha. `maxAngle` is in radians. `smoothingGroup` is an
+opaque equality token; do not assume it is the KF2 smoothing-mask format.
+Initial-radiosity values are emitted RGB keyed by polygon ID, not normals.
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
-    M_Int number_of_categories;
-    struct {
-      unsigned byte type_tag; //0x25 - This is Max Payne's custom implementation of the std::pair container 
-      M_String category_name;
-      M_String material_name;
-      M_Int material_id;
-   } Categories[number_of_categories];
-  } SortedMaterialCategories;
-```
-4. Material Properties
+## Common level-object record
 
-```c
-  struct {
-    M_Int number_of_material_properties;
-      struct {
-        M_String category_name;
-        M_Int number_of_materials_in_category;
-        struct {
-          M_String material_name;
-          M_String diffuse_texture_source_file_name;
-          M_String alpha_texture_source_file_name;
-          M_Bool has_alpha_test;
-          M_Bool has_adult_content;
-        } Material[number_of_materials_in_category];
-    } MaterailProperty[number_of_material_properties];
-  } MaterailProperties;
+```text
+LevelObject:
+    TString name
+    TMatrix4x3f objectToRoom
+    TMatrix4x3f objectToParent
+    TInt roomId
+    TString parentDynamicMeshName
 ```
 
-> **How to connect material with texture?**
->```c
->  function GetTextureIDBySourceFileName(string source_file_name) -> int {
->    for(i = 0; i != length(Texture); i++) {
->      if (Texture[i].source_file_name == source_file_name) {
->        return i;
->      } 
->    }
->  }
-> 
->  forEach(MaterialProperty in MaterialProperties) {
->    diffuse_texture_id = GetTextureIDBySourceFileName(MaterialProperty.diffuse_texture_source_file_name);
->    alpha_texture_id = GetTextureIDBySourceFileName(MaterialProperty.alpha_texture_source_file_name);
->  }
->```
+The outer Entries key and the embedded name are independent. Either can be
+empty or different; preserve both. The two matrices have different frames.
+For row-vector math, `pointWorld = pointLocal * objectToRoom * roomWorld`.
+Parent-relative transforms must use the actual dynamic-parent chain.
 
-> **How to connect material with properties?**
-> ```c
->   function GetMaterialCategoryForMaterialProperty(MaterialProperty) -> MaterialCategory {
->     forEach(MaterialCategory in MaterialCategories) {
->       if (MaterialCategory.category_name == MaterialProperty.category_name && 
->             MaterialCategory.material_name == MaterialProperty.material_name) 
->       {
->         return MaterialCategory;
->       }
->     }
->   }
-> 
->  function GetMaterialPropertyForMaterialCategory(MaterialCategory) -> MaterialProperty {
->     forEach(MaterialProperty in MaterialProperties) {
->       if (MaterialCategory.category_name == MaterialProperty.category_name && 
->             MaterialCategory.material_name == MaterialProperty.material_name) 
->       {
->         return MaterialProperty;
->       }
->     }
->   }
-> ```
+## Lights, startpoints, characters and items
 
-> **How to get material ID for Static Meshes and Dynamic Meshes?**
-> ```c
->   function GetMaterialCategoryByMaterialID(material_id) -> MaterialCategory {
->     forEach(MaterialCategory in MaterialCategories) {
->       if (MaterialCategory.material_id == material_id) {
->         return material_category;
->       }
->     }
->   }
->```
+| Record | Fields after LevelObject, in order |
+| --- | --- |
+| StaticLight | TMatrix3x3f roomRotation; ten TFloat: R,G,B,A,area,intensity,hotspotAngle,falloffAngle,falloffRange,colorMultiplier |
+| Startpoint | TInt type: observed 1 waypoint, 2 jump/player startpoint |
+| Character | TString className; four Vector(TString): startup, death, activate, special |
+| Trigger | TFloat radius; TInt type: 0 action, 1 player, 2 projectile, 3 character, 4 look-at |
+| LevelItem | TString className |
+| PointLight | Six TFloat: R,G,B,A,falloffRange,colorMultiplier |
 
-5. Light Maps
+Point-light table keys are integers. The last two point-light values have the
+opposite order from the editable LVL point-light tail. Character message lists
+are direct callbacks, not a replacement for the separate FSM table.
 
-```c
-  struct {
-    M_Int number_of_light_maps;
-    struct {
-      M_Int light_map_id;
-      M_Unsigned_Int file_type; //0x00 - TGA, 0x02 - SCX, 0x03 - PCX, 0x04 - JPG, 0x05 - DDS
-      M_Int file_size;
-      unsigned byte texture_file_data[file_size];
-    } LightMap[number_of_light_maps];
-  } LightMaps;
+## FSM
+
+```text
+Fsm:
+    LevelObject
+    Vector(TString) states
+    TString initialState
+    Handler startup
+    Map(TString, Handler) switchHandlers
+    Map(TString, Handler) customHandlers
+    Map(TString, Handler) entityHandlers
+
+Handler:
+    Vector(TString) before
+    Map(TString, Vector(TString)) stateHandlers
+    Vector(TString) after
 ```
 
-### Exits (Portals)
+The game executes Before, the matching current-state section, then After.
+An empty state key is not a wildcard. State conditions and named switch/custom
+events are different structures. Keep command strings and handler order.
+A storage reader must not silently move commands between these lists.
 
-1. Exits
+## Dynamic meshes and animation
 
-```c
-  struct {
-    M_Int number_of_exits;
-    struct {
-      M_String exit_name;
-      M_Unsigned_Int number_of_vertices;
-      M_Vector3 vertices[number_of_vertices];
-      M_Vector3 normal;
-      M_Matrix4x3 transform;
-      M_Int parent_room_id;
-      M_Int destination_room_id;
-      M_String destination_exit_name;
-      struct {
-        unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container
-        M_Int number_of_convex_regions;
-        struct {
-          unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container
-          M_Int number_of_points;
-          M_Int points[number_of_points];
-        } ConvexRegions[number_of_convex_regions];
-      }
-    } Exit[number_of_exits];
-  } Exits;
+```text
+DynamicMesh:
+    StaticMesh
+    LevelObject
+    Entries(TString, Animation) animations
+    TBool collisionsEnabled, bulletCollisionsEnabled, lightmapped
+    TBool needsContinuousUpdate, pointLightsAffect, blocksExplosions
+    BspSpan
+
+Animation:
+    TFloat durationSeconds
+    TMatrix4x3f startTransform, endTransform
+    Vector(TString) leavingFirstFrameMessages
+    Vector(TString) returningFirstFrameMessages
+    Vector(TString) reachingSecondFrameMessages
+    SampleGraph translation
+    SampleGraph rotation
+
+SampleGraph:
+    TInt marker = 113
+    TInt version = 3
+    TInt channelCount
+    TInt frameCount
+    repeat frameCount:
+        TFloat samples[channelCount]
 ```
 
-### Static Meshes
+The stored graph is frame-major. `frameCount` is not a sample-rate value.
+Translation values represent travel distance; rotation values parameterize
+orientation interpolation. Do not clamp all graph values to 0 through 1.
+Endpoint time checks are separate from interior interpolation.
 
-1. Texture Vertices Pool
+A dynamic collision BSP can use vertices centered on the arithmetic mean of
+all stored mesh vertices. Its runtime collision transform then restores the
+center. In row-vector form, the observed relationship is:
 
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_texture_vertices;
-    struct {
-      M_Int vertex_index;
-      M_Vector2 uv;
-      M_Vector2 light_map_uv;
-      M_Unsigned_Int flags;
-      M_Bool is_smooth;
-    } TextureVertex[number_of_texture_vertices]
-  } StaticMeshTextureVertices;
+```text
+collisionVertex = modelVertex - meshVertexMean
+collisionPosition = meshVertexMean * animationMatrix * parentToRoom
 ```
 
-> **vertex_index** points to the vertex from the static mesh or dynamic mesh vertices pool
+The hierarchy's origin matrix is separate from that centered collision frame.
+Do not add the mean to stored animation endpoints to compensate a second time.
+Hidden state and authored collision-channel flags are also separate controls.
 
-> **flags** and **is_smooth** fields are using by Max Payne engine to do runtime tesselation of the geometry
+## Rooms
 
->  **isCrease** 
-> ```c
->  function IsCrease() -> bool {
->    return flags >> 0x17 & 0x01
->  }
-> ```
-
->  **GetNeighbor** 
-> ```c
->  function GetNeighbor() -> unsigned int {
->    return flags == 0xffffffff ? flags : flags & 0x7fffff
->  }
-> ```
-
->  **GetNeighborEdge** 
-> ```c
->  function GetNeighborEdge() -> unsigned int {
->    return flags == 0xffffffff ? flags : flags >> 0x18
->  }
-> ```
-
-2. Static Meshes
-
-```c
-  struct {
-    M_Int number_of_static_meshes;
-    struct {
-      M_Int group_id;           
-      struct {
-        M_Unsigned_Int number_of_vertices;
-        M_Vector3 vertices[number_of_vertices];
-      } VerticesPool;
-      struct {
-        unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-        M_Int number_of_normals;
-        M_Vector3 normals[number_of_normals];
-      } NormalsPool;
-      M_Matrix4x3 Transform;
-      struct {
-        M_Int number_of_polygons;
-        struct {
-          M_Int polygon_id;
-          M_Int texture_vertex_start_indx;
-          M_Int number_of_vertices_in_polygon;
-          M_Vector3 polygon_normal;
-          M_Unsigned_Int engine_material_type;
-          M_Int material_id;
-          M_Int light_map_id;
-          M_Float max_edge_length;    
-          M_Float max_angle;
-          M_Int smooting_group;
-        } Polygon[number_of_polygons];
-      } Polygons;
-      struct {
-        unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
-        M_Int number_of_elements;
-        struct {
-          M_Int key;
-          M_Vector3 value;
-        } InitialRadiosity[number_of_elements]
-      }
-    } StaticMesh[number_of_static_meshes]
-  } StaticMeshes;
+```text
+Room:
+    Vector(TInt) staticMeshIds
+    Vector(TString) staticLightNames
+    Vector(TString) exitNames
+    Vector(TString) startpointNames
+    Vector(TString) fsmNames
+    Vector(TString) characterNames
+    Vector(TString) triggerNames
+    Vector(TString) dynamicMeshNames
+    Vector(TString) levelItemNames
+    Vector(TInt) pointLightIds
+    TString name
+    TFloat aiNetDensity
+    BspSpan
 ```
 
-> **How build the polygons?**
-> ```c
->   forEach(Polygon in Polygons) {
->     vertices = []
->     normals = []
->     uv = []
->     light_map_uv = []
->     tex_vertex = Polygon.texture_vertex_start_indx
->     for (i = 0; i != Polygon.number_of_vertices_in_polygon; i++) {
->       texture_vertices = StaticMeshTextureVertices[tex_vertex + i];
->       vertices.append(Polygon.VerticesPool[texture_vertices.vertex_index])
->       normals.append(Polygon.NormalsPool[texture_vertices.vertex_index])
->       uv.append(texture_vertices.uv);
->       light_map_uv.append(texture_vertices.light_map_uv);
->     }
->   }
->```
-> To find material by **Polygon.material_id** look at [Materials Section](#materials)
-> 
-> To find light map use **LightMaps[Polygon.light_map_id]**
-> 
-> The polygon doesn't have a triangle index array so just connect vertices in order they are defined
-
-### Static Lights
-
-1. Static Lights
-
-```c
-  struct {
-    M_Int number_of_static_lights;
-    struct {
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_Matrix3x3 rotation_inside_room;
-      M_Float r;
-      M_Float g;
-      M_Float b;
-      M_Float a;
-      M_Float area;
-      M_Float intensity
-      M_Float hotspot_angle
-      M_Float falloff_angle;
-      M_Float falloff_range;
-      M_Float color_multiplier; 
-    } StaticLight [number_of_lights];
-  } StaticLights;
-```
-### Waypoints
-
-1. Waypoints
-
-```c
-  struct {
-    M_Int number_of_waypoints;
-    struct {
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_Int type; //0 - way_point 1 - start_point
-    } Waypoint [number_of_waypoints];
-  } Waypoints;
-```
-
-### FSM (Scripts)
-
-1. FSM 
-
-```c
-  struct {
-    M_Int number_of_fsms;
-    struct {
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      struct {
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_states;
-          M_String state_name[number_of_states];
-          M_String dafault_state;
-        } States;
-        struct {
-          struct {
-            unsigned byte type_tag;
-            M_Int number_of_messages;
-            M_String messages[number_of_messages];              
-          } OnSendBeforeEvent;
-          struct {
-            unsigned byte type_tag;
-            M_Int number_of_state_specific_events;
-            struct {
-              M_String state_name;
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } StateSpecificEvent[number_of_state_specific_events];    
-          } StateSpecific;  
-          struct {
-            unsigned byte type_tag;
-            M_Int number_of_messages;
-            M_String messages[number_of_messages];   
-          } OnSendAfterEvent;
-        } StartupEvents;  
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_state_switch_events;
-          struct {
-            M_String state_name;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnStateBeforeEvent;            
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_state_specific_events;
-              struct {
-                M_String state_name;
-                unsigned byte type_tag;
-                M_Int number_of_messages;
-                M_String messages[number_of_messages];
-              } StateSpecificEvent[number_of_state_specific_events];
-            } StateSpecificEvents;  
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnStateAfterEvent;
-          } StateSwitchEvent[number_of_state_switch_events];
-        } StateSwitchEvents;
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_custom_string_events;
-          struct {
-            M_String string_name;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnCustomStringBeforeEvent; 
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_state_specific_events;
-              struct {
-                M_String state_name;
-                unsigned byte type_tag;
-                M_Int number_of_messages;
-                M_String messages[number_of_messages];   
-              } StateSpecificEvent[number_of_state_specific_events];
-            } StateSpecificEvents;  
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnCustomStringAfterEvent; 
-          } CustomStringEvent[number_of_custom_string_events];
-        } CustomStringEvents;   
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_entity_events;
-          struct {              
-            M_String event_name;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnBeforeEvent;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_state_specific_events;
-              struct {
-                M_String state_name;
-                unsigned byte type_tag;
-                M_Int number_of_messages;
-                M_String messages[number_of_messages];   
-              } StateSpecificEvent[number_of_state_specific_events];
-            } StateSpecificEvents;          
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];   
-            } OnAfterEvent;
-          } EntityEvent[number_of_entity_events];
-        } EntityEvents;    
-      } Events;
-    } FSM[number_of_fsms];
-  } FSMS;
-```
-
-### Characters
-
-1. Characters
-
-```c
-  struct {
-    M_Int number_of_characters;
-    struct {   
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_String character_name;
-      struct { 
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_messages;
-          M_String messages[number_of_messages];            
-        } OnStartupSendBeforeEvent;
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_messages;
-          M_String messages[number_of_messages];         
-        } OnDeathSendBeforeEvent;
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_messages;
-          M_String messages[number_of_messages];              
-        } OnActivateSendBeforeEvent;
-        struct {
-          unsigned byte type_tag;
-          M_Int number_of_messages;
-          M_String messages[number_of_messages];            
-        } OnSpecialSendBeforeEvent;
-      } FSM;
-    } Character[number_of_characters];
-  } Characters;
-```
-
-### Triggers
-
-1. Triggers
-
-```c
-  struct {
-    M_Int number_of_triggers;
-    struct {
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_Float radius;
-      M_Int type; //0 - action_button 1 - player_collide 2 - projectile_collide 3 - character_collide 4 - look_at_trigger 
-    } Trigger [number_of_triggerse];
-  } Triggers;
-```
-### Dynamic Meshes
-
-1. Texture Vertices Pool
-
-```c
-  struct {
-    unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-    M_Int number_of_texture_vertices;
-    struct {
-      M_Int vertex_index;
-      M_Vector2 uv;
-      M_Vector2 light_map_uv;
-      M_Unsigned_Int flags;
-      M_Bool is_smooth;
-    } TextureVertex[number_of_texture_vertices]
-  } DynamicMeshTextureVertices;
-```
-
-> **vertex_index** points to the vertex from the static mesh or dynamic mesh vertices pool
-
-> **flags** and **is_smooth** fields are using by Max Payne engine to do runtime tesselation of the geometry
-
->  **isCrease** 
-> ```c
->  function IsCrease() -> bool {
->    return flags >> 0x17 & 0x01
->  }
-> ```
-
->  **GetNeighbor** 
-> ```c
->  function GetNeighbor() -> unsigned int {
->    return flags == 0xffffffff ? flags : flags & 0x7fffff
->  }
-> ```
-
->  **GetNeighborEdge** 
-> ```c
->  function GetNeighborEdge() -> unsigned int {
->    return flags == 0xffffffff ? flags : flags >> 0x18
->  }
-> ```
-
-2. Dynamic Meshes
-
-```c
-  struct {
-    M_Int number_of_dynamic_meshes;
-    struct {
-      M_String dynamic_mesh_name;
-      struct {
-        M_Unsigned_Int number_of_vertices;
-        M_Vector3 vertices[number_of_vertices];
-      } VerticesPool;
-      struct {
-        unsigned byte type_tag; //0x1C - This is Max Payne's custom implementation of the std::vector container 
-        M_Int number_of_normals;
-        M_Vector3 normals[number_of_normals];
-      } NormalsPool;
-      M_Matrix4x3 Transform;
-      struct {
-        M_Int number_of_polygons;
-        struct {
-          M_Int polygon_id;
-          M_Int texture_vertex_start_indx;
-          M_Int number_of_vertices_in_polygon;
-          M_Vector3 polygon_normal;
-          M_Unsigned_Int engine_material_type;
-          M_Int material_id;
-          M_Int light_map_id;
-          M_Float max_edge_length;    
-          M_Float max_angle;
-          M_Int smooting_group;
-        } Polygon[number_of_polygons];
-      } Polygons;
-      struct {
-        unsigned byte type_tag; //0x1F - This is Max Payne's custom implementation of the std::map container 
-        M_Int number_of_elements;
-        struct {
-          M_Int key;
-          M_Vector3 value;
-        } InitialRadiosity[number_of_elements]
-      }
-      struct {
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      struct {
-        M_Int number_of_animations;
-        struct {
-          M_String animation_name;
-          M_Float animation_length_in_seconds;
-          M_Matrix4x3 start_transform;
-          M_Matrix4x3 end_transform;
-          struct {
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];
-            } OnLeavingFirstKeyFrameEvent;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];
-            } OnReturningFirstKeyFrameEvent;
-            struct {
-              unsigned byte type_tag;
-              M_Int number_of_messages;
-              M_String messages[number_of_messages];
-            } OnReachingSecondKeyFrameEvent;
-          } FSM;
-          struct {
-            struct {
-              M_Int header; //113
-              M_Int major_version; //3 Major version
-              M_Int minor_version; //1 Minor version
-              M_Int sample_rate;
-              M_Float curve_control_point[sample_rate];
-            } TranslationGraph;
-            struct {
-              M_Int header; //113
-              M_Int major_version; //3 Major version
-              M_Int minor_version; //1 Minor version
-              M_Int sample_rate;
-              M_Float curve_control_point[sample_rate];
-            } RotationGraph;
-          } AnimationGraphs;
-        } Animation[number_of_animations];
-      } Animations;
-      struct {
-        M_Bool dynamic_collisions;
-        M_Bool bullet_collisions;
-        M_Bool light_mapped;
-        M_Bool cont_update;
-        M_Bool point_light_affected;
-        M_Bool block_explosions;
-      } Properties;
-      struct {
-        M_Int unknown1;
-        M_Int unknown2;
-        M_Int unknown3;    
-        M_Int unknown4; 
-      } BSP;
-    } DynamicMesh[number_of_dynamic_meshes];
-  } DynamicMeshes;
-```
-
-> Look at [Static Mesh Notes](#static-meshes) to figure out how to build the polygons
-
-### Items
-
-1. Items
-
-```c
-  struct {
-    M_Int number_of_items;
-    struct {
-      struct {
-        M_String shared_name;
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_String item_name;
-    } Item[number_of_items];
-  } Items;
-```    
-
-### Point Lights
-
-1. Point Lights
-
-```c
-  struct {
-    M_Int number_of_pointlights;
-    struct {
-      M_Int id;
-      struct {
-        M_String name;
-        M_Matrix4x3 object_to_room_transform;
-        M_Matrix4x3 oject_to_parent_transform;
-        M_Int room_id;
-        M_String parent_dynamic_mesh_name;
-      } EntityProperties;
-      M_Float r;
-      M_Float g;
-      M_Float b;
-      M_Float a;
-      M_Float falloff;
-      M_Float intensity;
-    } PointLight[number_of_pointlights];
-  } PointLights;
-```
-### Rooms
-
-1. Rooms
-
-```c
-  struct {
-    M_Int number_of_rooms;
-    struct {
-      M_Int room_id;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_static_meshes;
-        M_Int static_mesh_id[number_of_static_meshes];
-      } StaticMeshes;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_lights;
-        M_String static_light_name[number_of_lights];
-      } StaticLights;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_exits;
-        M_String exit_name[number_of_exits];
-      } Exits;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_start_points;
-        M_String start_point_name[number_of_start_points];
-      } StartPoints;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_fsms;
-        M_String fsm_name[number_of_fsms];
-      } FSMS;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_characters;
-        M_String character_name[number_of_characters];
-      } Characters;   
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_triggers;
-        M_String trigger_name[number_of_triggers];
-      } Triggers;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_dynamic_meshes;
-        M_String dynamic_mesh_name[number_of_dynamic_meshes];
-      } DynamicMeshes;    
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_items;
-        M_String item_name[number_of_items];
-      } Items;
-      struct {
-        unsigned byte type_tag;
-        M_Int number_of_point_lights;
-        M_Int point_light_id[number_of_point_lights];
-      } PointLights;
-      M_String room_name;
-      M_Float ai_net_density;  
-      struct {
-        M_Int unknown1;
-        M_Int unknown2;
-        M_Int unknown3;
-        M_Int unknown4;
-      } BSP;
-    } Room[number_of_rooms];
-  } Rooms;
-```
+Rooms are serialized last. Their BSP spans select runtime collision data.
+The external `.ai` navigation grid is not an extra LDB section. Reading an
+LDB successfully does not prove that regenerating AI, compiling an editable
+level or replaying all gameplay will succeed.

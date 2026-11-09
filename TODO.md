@@ -1,5 +1,12 @@
 # Importer follow-up
 
+- [ ] Complete the remaining format descriptions before claiming broader
+  support: legacy LVL edge/UV branches, older LV2 document/entity profiles and
+  the exact version-2 selection collection. These are unknown or incomplete
+  layouts, distinct from the confirmed current profiles. Keep unsupported
+  light/Helper payloads opaque until their schemas are established; see
+  [format index](docs/specification/INDEX.MD).
+
 - [ ] Qualify real Maya 2022/2023/2024 imports (mesh/material, skeleton, SKDv0/v1,
   cancellation and repeated imports). Headless tests cannot establish DAG/API or
   viewport correctness. See [review](docs/REVIEW.md).
