@@ -38,7 +38,7 @@ The size includes the 13-byte header. Bound every child read by its parent.
 | `00010013` | Animation | 0 |
 | `00010014` | Skin | 0, 1; see SKD |
 | `00010015` | Environment | 0 |
-| `00010016` | Helper | Not fully specified |
+| `00010016` | Helper | Node followed by class name; see below |
 | `00010017` | Point-light animation | Not fully specified |
 | `00010018` | Directional-light animation | Not fully specified |
 | `00010019` | Spot-light animation | Not fully specified |
@@ -318,8 +318,8 @@ if version >= 1:
         TUInt frameId
         TFloat visibility
 if version >= 2: TUInt loopToFrame
-if version >= 3: TInt interpolationMethod
-if version >= 4: TBool maintainMatrixScaling
+if version >= 3: TInt normalizationMode
+if version >= 4: TBool scalingFlag
 ```
 
 For versions below 5, the game loader adds one to the stored total frame count.
@@ -333,7 +333,8 @@ looping, visibility, scale and interpolation must be handled explicitly.
 The observed MP1 evaluator interpolates matrix coefficients; it must
 not be replaced with quaternion interpolation merely because the data describes
 object motion. Some coefficient modes can make a basis singular. Preserve the
-method and matrix-scaling flag even if a preview supports only a subset.
+normalization value and the stored scaling flag even if a preview supports
+only a subset.
 
 An animation file can have several tracks. A constructed game object can use
 its first track's clock while other consumers retain per-track metadata.
@@ -341,6 +342,39 @@ Do not infer one universal timing rule for every resource role. External script
 definitions also select animation names, intervals and callbacks; these are not
 additional KF2 fields. MP1 and MP2 graphic-novel consumers use different fade
 and activation rules even when they load related KF2 structures.
+
+## MP2 animation playback
+
+The MP2 loader calls the version-3 integer `normalizationMode`. The Python SDK
+still exposes it as `frame_to_frame_interpolation_method`; preserve its stored
+value. The version-4 bool is retained by the chunk reader, but the inspected standalone
+keyframe construction and playback path does not consult it. Its old SDK name,
+`maintain_matrix_scaling`, is not a verified switch for the rules below.
+
+The loader checks the lengths of all three basis rows of every stored key. If
+any length lies outside 0.9999 through 1.0001, it keeps a full matrix track.
+Otherwise it builds separate position and rotation tracks, with rotations held
+as quaternions and redundant keys removed. This conversion does not change the
+on-disk matrix fields. Runtime sample frame IDs are narrowed to signed 16-bit;
+stored frame IDs remain TUInt and must not be rewritten as TShort.
+
+Playback uses `frame = timeInSeconds * frameRate`. The matrix path linearly
+blends matrix coefficients. In the separate-track path, position is blended
+linearly; the two rotation samples are converted back to bases, then their
+coefficients are blended linearly. Quaternion storage here does not imply
+spherical interpolation during playback.
+
+After blending, mode 0 leaves the basis unchanged, mode 1 normalizes each row
+independently, and mode 2 subtracts projections onto previous rows and normalizes
+each row in order. Modes 1 and 2 can differ when rows are not perpendicular.
+For a full matrix track, playback then multiplies each resulting row by its
+source row length, or the interpolated length between the selected keys. This
+step also occurs in mode 0; do not simplify it to a generic scale-preserving
+matrix interpolation. Zero-length and singular bases need separate handling.
+
+These are the inspected MP2 playback rules, not a promise of Maya equivalence
+or a rule for every animation consumer. KF2 playback and compiled LDB dynamic
+animation use different paths; see [MP2 LDB](MAXPAYNE2_LDB.MD#dynamic-animation).
 
 ## Camera and Environment
 
@@ -359,7 +393,11 @@ Do not assume that all camera keys are rigid transforms with unit scale.
 
 Environment version 0 contains eight TUChar values: ambient R/G/B/A followed
 by clearing-color R/G/B/A. Do not insert a Node or a field count into that payload.
-Light, light-animation and Helper payloads are not fully specified on this page.
+The MP2 Helper reader opens chunk `00010016`, reads a Node child, skips to the
+end of that child, then reads `TString className`. The enclosing Helper version
+is not used to choose a different payload in this reader. This does not establish
+that every possible Helper version has this layout. Light and light-animation
+payloads remain outside this description.
 
 ## Validation and import limits
 

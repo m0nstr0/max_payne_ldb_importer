@@ -188,6 +188,28 @@ It is not the 25-byte editable LV2 cell. Preserve packed channels and respect th
 lighting requires explicit reconstruction choices; it is not lossless recovery
 of every original editor value.
 
+### Sampling runtime volume lighting
+
+The loader reads cell bytes only when all three dimensions are positive.
+Otherwise it retains no grid from that record. Check dimensions and byte-count
+multiplication before allocating; a file record and a retained runtime grid are
+not always the same thing.
+
+Direction components decode as `(byte - 128) / 128`, so 128 means zero and
+255 means 127/128. Ambient channels decode as byte/255. Directional hue uses
+byte * 360/255 degrees, saturation uses byte/255, and the HSV value is 0.5.
+The color conversion produces byte-scale RGB; the sampler divides it by 255
+and multiplies by the stored intensity.
+
+The sampler blends the eight surrounding cells with trilinear weights. It
+maps each coordinate to `(position - min) * (dimension - 1) / (max - min)` and
+clamps it below the last grid point by 0.0001 before choosing its neighbors.
+The basic sampler blends directions without normalizing the result. The
+filtered sampler averages five position samples and then normalizes direction.
+With no retained grids, the public sampler returns ambient (0.5, 0.5, 0.5),
+directional color (0, 0, 0), and direction (0, 1, 0). These are runtime rules;
+they add no fields to the 12-byte cells or the 25-byte editable LV2 cells.
+
 ## Lights, objects and navigation markers
 
 | Record | Fields in stored order |
@@ -317,6 +339,15 @@ samples. `pointCount` is not a sample rate. The graph is different from the
 compressed marker 114/115 graphs in LV2. Animation callback offsets point
 directly to MessageVector, without a Handler wrapper.
 
+The dynamic-animation evaluator returns the start matrix at time <= 0 and
+the end matrix at time >= duration. For an interior time, it evaluates channel
+0 of both graphs at `time / duration`. The translation curve value is a distance:
+for nonzero endpoint separation, position is `start + (end - start) *
+translationValue / distance(start, end)`. It is not a direct 0-through-1 blend
+factor. The rotation curve drives quaternion interpolation between endpoint
+rotations after choosing matching quaternion signs. This is different from
+KF2 matrix-coefficient playback. Keep both curves and duration independently.
+
 The FSM transform is a world-space default pose. Its localTransform and the
 animation endpoints are relative to the nearest parent with an FSM; -1 means
 world space. In row-vector notation:
@@ -341,7 +372,7 @@ DynamicMesh:
     TInt prefabId
     TBool uniqueRenderFlag
     TVector3f boundsMin, boundsMax, meshMidpoint
-    if prefabId < 0 or this is its first occurrence:
+    if prefabId < 0 or prefabId == registeredPrefabCount:
         Records(RenderMesh) renderMeshes
         Records(CollisionShape) collisionShapes
     else if uniqueRenderFlag:
@@ -349,7 +380,13 @@ DynamicMesh:
     Records(Animation) animations
 ```
 
-For a repeated prefab, collisions always come from the first occurrence.
+A negative prefabId owns its data without registering a template. An ID equal
+to the number of registered templates owns its data and appends the next
+template. A smaller nonnegative ID reuses that registered template. IDs above
+the current count are invalid; an arbitrary unseen ID is not a new template.
+The registration count is separate from the dynamic-mesh record index.
+
+For a repeated prefab in revision 34, collisions come from the registered template.
 The final bool controls unique render data. `useLightmaps` does not control
 this grammar. The original authoring name of that bool is unknown; the Python
 API's historical `share_collision` name must not be taken literally.
@@ -409,3 +446,35 @@ Keep unknown words and MOPP bytes intact. Reconstructing LV2 requires authoring
 names, object IDs, polygon structure and editor-only defaults that LDB does not
 fully store. Parsing or reproducing binary layout is not a claim of complete
 gameplay, lighting or physical equivalence.
+
+## Earlier revisions accepted by the MP2 loader
+
+The inspected loader rejects versions below 22. It has no upper-version check;
+that does not establish support for unknown future layouts. The full schema
+above remains revision 34. These observed branches are useful for comparison,
+not a complete implementation of revisions 22 through 33:
+
+| Revision | Observed change |
+| --- | --- |
+| 22 | No room volume-lighting payload |
+| 23–24 | One volume grid per room, without a preceding grid count |
+| 25 onward | A grid count precedes the room volume grids |
+| 28 onward | Mirror section is present |
+| Below 29 | A discarded TFloat precedes each room or dynamic collision-shape set |
+| 29 onward | Dynamic meshes store a physical-material index |
+| 30 onward | Dynamic meshes store a prefab ID |
+| Below 31 | Stored collision-mask bits 0x2 and 0x80 additionally set runtime bits 0x1 and 0x80 |
+| 32 onward | Dynamic meshes store the elevator bool |
+| 33 onward | Reused dynamic prefabs clone the template collision body; earlier revisions still load collision bytes |
+| 34 onward | Dynamic meshes store the unique-render bool; triggers store the collision-template ID |
+
+For revisions below 34, a trigger with collision geometry reads an inline shape
+set without a preceding template ID. These gates belong to the enclosing LDB
+revision, not to LV2 or KF2 chunk versions. The current Python and canonical C++
+LDB2 readers support revision 34 only.
+
+## Runtime state is a separate stream
+
+LevelRuntime also reads and writes object and exit state using chunks. Those
+chunks are not extra LDB sections or editable LV2 records. See
+[MP2 runtime state](MAXPAYNE2_RUNTIME_STATE.MD) for the confirmed small layouts.

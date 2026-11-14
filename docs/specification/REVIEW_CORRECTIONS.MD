@@ -19,3 +19,11 @@ The main corrections are now part of their format pages:
 These documents describe file storage separately from load-time conversion,
 scene import, compilation and game behavior. An unknown meaning is not a
 missing field. Preserve unknown values instead of giving them guessed names.
+
+## 2026-11-14 source comparison
+
+KF2 now distinguishes normalization modes from interpolation and documents the
+MP2 playback path and Helper payload. MP2 LDB now specifies sequential prefab
+registration, selected older-revision gates, volume-light sampling and the
+translation curve's distance units. Runtime ObjectBase and Exit state chunks
+have a separate page; their fields are not added to LDB or LV2.

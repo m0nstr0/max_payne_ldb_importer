@@ -1,0 +1,101 @@
+{
+  "date": "2026-11-14",
+  "scope": "Source comparison and retained finite controls; no new target execution or full gameplay equivalence claim",
+  "workspace_relative_inputs": [
+    {
+      "path": "MP2KF2/src/loader/LoaderAuxiliaryChunks.cpp",
+      "bytes": 3509,
+      "sha256": "5e7689d396ec3dff88233da7c1895630483da1c29ab137cdd794a9b46df3a7a8"
+    },
+    {
+      "path": "MP2KF2/src/animation/KeyframeAnimationChunk.cpp",
+      "bytes": 7463,
+      "sha256": "49fbf25e7b748ebea6171ea01f69c6b01533c94e061ec478ea97856aa69adb35"
+    },
+    {
+      "path": "MP2KF2/src/animation/KF_KeyframeAnimationLoading.cpp",
+      "bytes": 12606,
+      "sha256": "a82001afe12c0bb8110422c2bc978e0c8f638c1b28d5dc3920a8ca673bb20ff4"
+    },
+    {
+      "path": "MP2KF2/src/animation/KF_KeyframeAnimationPlayback.cpp",
+      "bytes": 8210,
+      "sha256": "49da72801dbb87854b0c25b750a7827e64656f43cae522ba0b99d051f624bdcd"
+    },
+    {
+      "path": "MP2KF2/src/animation/KeyframeSampling.cpp",
+      "bytes": 7126,
+      "sha256": "f6f7b46c1a1714725fef62d05b779a3e0323e9448c36217295cf8e7b9fd02134"
+    },
+    {
+      "path": "MP2KF2/src/animation/AnimationNumeric.cpp",
+      "bytes": 10816,
+      "sha256": "99b76f869418b0db0b224e4be5fd83458d0286f8fed5bc8285ce88351861ce1f"
+    },
+    {
+      "path": "MP2Level/src/X_Level.cpp",
+      "bytes": 6889,
+      "sha256": "bedf0237edf831b0ff4d932f7b3a957d5b3ea6bd25f6c6568514b3130596be2c"
+    },
+    {
+      "path": "MP2Level/src/X_LevelStringPool.cpp",
+      "bytes": 1863,
+      "sha256": "e8421d3cfcbc63452fa92fc9fe0674d4ec26a85dfce28a965ea234e87760974b"
+    },
+    {
+      "path": "MP2Level/src/X_LevelVolumeLighting.cpp",
+      "bytes": 13063,
+      "sha256": "d62709e9669ab4b3a641b76b0adc212f49db3ae416a7a57abdc6d223ae08821c"
+    },
+    {
+      "path": "MP2Level/src/X_LevelDynamicMeshAnimation.cpp",
+      "bytes": 5986,
+      "sha256": "be491782a33172f1abd8dc5f9338d94228596e01e45b078feead6f403fcf5c14"
+    },
+    {
+      "path": "MP2Level/src/X_LevelDynamicMesh.cpp",
+      "bytes": 5679,
+      "sha256": "2823cc96561f06ca63ba1dc9e33b53ccbfe5065bdce98cc4bcf33c276270e0cc"
+    },
+    {
+      "path": "MP2Level/src/X_LevelMesh.cpp",
+      "bytes": 10388,
+      "sha256": "4b2d41ce4d94558d9360ef16fb581bd123b340e09bf3d965469dc2276a763462"
+    },
+    {
+      "path": "MP2Level/src/X_LevelTrigger.cpp",
+      "bytes": 3346,
+      "sha256": "6742b323aa6ddc0165984c3b0f16c714c05c6d40ea7b76eed5586295c59281fa"
+    },
+    {
+      "path": "MP2LevelRuntime/src/X_LevelRuntimeObjectBase.cpp",
+      "bytes": 18134,
+      "sha256": "c54f5d9d9d7aa7f77db00c3fe80fc4d109cd46066a540c8f93fdc04e86023510"
+    },
+    {
+      "path": "MP2LevelRuntime/src/X_LevelRuntimeExit.cpp",
+      "bytes": 4772,
+      "sha256": "f121365660643e6d746e5de5088ea4ff6e1c6fbfb8235d4a18be10cb85961226"
+    },
+    {
+      "path": "MP2Level/research/analysis-r1/math-pinned-comparison.json",
+      "bytes": 1502,
+      "sha256": "0a03d0a7ad1ba17f598e34c3dacf13d57f137205214c48db15234a8f9be0692c"
+    },
+    {
+      "path": "MP2LevelRuntime/research/serialization-r1/comparison-r1.json",
+      "bytes": 63105,
+      "sha256": "d09a845c83edf4614968a74751f54f02433c3233567a1b97827ee4712341d5ec"
+    },
+    {
+      "path": "MP2KF2/research/final-source-r3-matrix/report.json",
+      "bytes": 142521,
+      "sha256": "cf83b082ce01a970c111d6a1ba3193e03e7d8d26e524e8445400bb01679c345c"
+    },
+    {
+      "path": "MP2Grph/src/G_FColor.cpp",
+      "bytes": 5067,
+      "sha256": "43acbbf6f37d4f33f73b7c0cbbe8663ecbf02f97bf47859454bbbe7cd55cd64a"
+    }
+  ]
+}

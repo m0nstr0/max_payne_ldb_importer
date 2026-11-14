@@ -614,3 +614,10 @@ The Maya importer documents LV2 but does not currently import it. Reading and
 writing this editable format, compiling it to LDB and running the compiled
 level are separate tasks. Lossless storage does not reconstruct missing editor
 information from an LDB or guarantee complete gameplay equivalence.
+
+## Runtime state boundary
+
+The runtime object's current-room and transform chunks belong to the state
+stream used during saving and loading. They are not additional CommonChunk,
+Mesh or document fields in LV2. See [MP2 runtime state](MAXPAYNE2_RUNTIME_STATE.MD).
+The runtime libraries do not establish missing editor-only LV2 layouts.
