@@ -1,0 +1,178 @@
+{
+  "date": "2026-11-14",
+  "scope": "Headless parsing and C++ byte preservation; no Maya/game qualification",
+  "python_unit_tests": 47,
+  "python_compileall": "pass",
+  "cpp_focused_ctest": {
+    "passed": [
+      "mp2_ldb2",
+      "mp2_recovery",
+      "mp2_dynamic_frames"
+    ],
+    "failed": 0
+  },
+  "python_corpus": {
+    "scope": "Headless parsing only; no Maya scene or game qualification",
+    "python": "3.15.0 (tags/v3.15.0:d220409, Oct  9 2026, 11:55:56) [MSC v.1951 64 bit (AMD64)]",
+    "counts": {
+      ".ldb:pass": 56
+    },
+    "inventories": [
+      {
+        "name": "original-ldb-inputs.json",
+        "sha256": "a3bc1c01b4f315e0509f1fbe1a807dfb8c49136716fc1d3730af651bb17848d0"
+      }
+    ],
+    "accepted_count": 56,
+    "accepted_manifest_sha256": "6726737a2f0a6751bbd0fcaa7d0fd5f3f2dd352f8c812cdc6a03029b6b4ee9f1",
+    "failure_count": 0,
+    "failure_groups": []
+  },
+  "python_original_games": {
+    "MP1": 28,
+    "MP2": 28
+  },
+  "cpp_corpus": {
+    "exit_code": 0,
+    "original_mp2_files": 28,
+    "originals_and_copies_unchanged": true,
+    "seconds": 11.84,
+    "executable_sha256": "e6a4b9f46e82f6c0f4af674d6e05f48bbe36bc6a62fde5199ce7f64bef2e5b6d",
+    "scope": "Synthetic invalid/valid prefab cases and original read/write byte identity plus isolated float edit; no game or Maya run"
+  },
+  "baseline_regression": {
+    "python": {
+      "baseline_commit": "3157000",
+      "complete_malformed_cases": 10,
+      "baseline_accepted": 10,
+      "fixed_rejected": 10
+    },
+    "cpp": {
+      "baseline_with_new_tests_exit": 1,
+      "output": "LDB2 test failed: Skipped prefab ID was not rejected at registration\n",
+      "expected_failure": "Skipped prefab ID was not rejected at registration"
+    }
+  },
+  "original_mp2_inputs": [
+    {
+      "name": "\u0438\u0441\u0445\u043e\u0434\u043d\u0430\u044f \u043a\u0430\u0440\u0442\u0430.ldb",
+      "sha256": "940028d95293bdbbddb78ab6559fe83fab9b57d530f2100b2cdd6ea98e2f949a"
+    },
+    {
+      "name": "Apartment-original.reference.ldb",
+      "sha256": "e9b6043822d9ca0b39606ec712b21e40eb4129ae3728c118e4f1cc222012a26d"
+    },
+    {
+      "name": "Hospital-original.reference.ldb",
+      "sha256": "674c3f08c73d7721e5527c44eba2afdaa22ca11612934f0774a2e5bc6c1c8678"
+    },
+    {
+      "name": "04_Warehouse.ldb",
+      "sha256": "5468abeae16a139cf1abc5dde02da603c77ff1d96f10a914b7a61d6630e1bdb3"
+    },
+    {
+      "name": "05_First_Vodka.ldb",
+      "sha256": "58568b0cab8543120f3ed2b9279a8550db556157869167add9d3b68f193d3f79"
+    },
+    {
+      "name": "06_First_Dream.ldb",
+      "sha256": "caa0af8e373c82e1a18282f12a076f5b29dbcfc65042873196fda0191ee12a46"
+    },
+    {
+      "name": "07_Maxs_Apartment_B.ldb",
+      "sha256": "f62f142655f42b07f1c6112a9ccf3d338a52945062e01dada81aed7110179e3f"
+    },
+    {
+      "name": "08_First_Address_Unknown.ldb",
+      "sha256": "78ac25afbcbe19ad39a139187626ef15ba74dba5893bc05fd2bd2648f8e2adeb"
+    },
+    {
+      "name": "11_Second_Address_Unknown.ldb",
+      "sha256": "4eb67d18168c44aab48f074629886ac2add4161fbdffcb88d4bdee21658585cb"
+    },
+    {
+      "name": "12_Condemned_Building.ldb",
+      "sha256": "557de29d97e4c8cd90ec04527d1b32e35426647d448a65f2a821190564b5ca90"
+    },
+    {
+      "name": "12_Condemned_Building_B.ldb",
+      "sha256": "dbad22fec60f786a52c77459b89ccad007eb8961168dc76bd05ffec7b87f03ee"
+    },
+    {
+      "name": "13_Construction_Site.ldb",
+      "sha256": "61b4aea41c2926b631c107dd137ba2351c0b53d2970d4a59d41ead15078acc8d"
+    },
+    {
+      "name": "13_Construction_Site_B.ldb",
+      "sha256": "cb17043f9bdd567052e74da89415a9021cd3c94ba1dfc45d3092cfee73950932"
+    },
+    {
+      "name": "13_Construction_Site_C.ldb",
+      "sha256": "ab2a99d902ba7499ddf1f887d6106c81b8f7c845f229ccffd6ba0f41a60d17c4"
+    },
+    {
+      "name": "14_Second_Dream.ldb",
+      "sha256": "1a5cd408358619db97213290fd72818584edda96d5ba24a81c8e6c6c7444e9c9"
+    },
+    {
+      "name": "15_Second_Hospital.ldb",
+      "sha256": "cd10cdfc5a8af17e2111a4639b9549ee9bb17e4183bbd7fb57ab9cf839959a4b"
+    },
+    {
+      "name": "16_Second_Vodka.ldb",
+      "sha256": "ba050f854311f6dad6e333b04209faa749804ee07710454a0cbfc1204145bc54"
+    },
+    {
+      "name": "17_Crackhouse.ldb",
+      "sha256": "8ceeacda7ca0576d3469db0bbf73c6e87c3b1624b784f2254d77302584494f38"
+    },
+    {
+      "name": "18_Gognittis_Lot.ldb",
+      "sha256": "a83c0c55e3e15140fbc23a2130768e703efe1adb50772334502de438b95fb1ac"
+    },
+    {
+      "name": "19_Third_Address_Unknown.ldb",
+      "sha256": "fbc03d1e024c6a5d2f2defac68ddadf959834abc00e30aab10f52d212a7efa27"
+    },
+    {
+      "name": "20_Third_Dream.ldb",
+      "sha256": "7bb16dd4f9f17e3b2267f1bae0ece633e5348bf507b2bd4abb6dbeefba06d5ed"
+    },
+    {
+      "name": "21_The_Manor.ldb",
+      "sha256": "3a30f938444e2190935d0c6bf667062d4f8a22c4a8af62b96cc68bfadd4d4988"
+    },
+    {
+      "name": "21_The_Manor_B.ldb",
+      "sha256": "16b8e165b383a3f953be8bee7474ecedadf885491d64c0abd860d51b33c7a74d"
+    },
+    {
+      "name": "01_Survival_Manor_FrontYard.ldb",
+      "sha256": "536b16145d884a0146b00a85d982590ec3c4f9763885eb3500b10e87c08b9972"
+    },
+    {
+      "name": "02_Survival_Construction_yard.ldb",
+      "sha256": "fc92f911786e6ed9b10931cc9f2c4dbd94cbc59c2eedf7e95614c093d371c188"
+    },
+    {
+      "name": "03_Survival_Manor.ldb",
+      "sha256": "e601a3d9831635d0b036fedae954dfdb66bb0131993c8f83c71eb13285610bd7"
+    },
+    {
+      "name": "04_Survival_Gognittis_Lot.ldb",
+      "sha256": "89e9a2175d84e381d386fc0a4518de272eb04fb558660f68ac7119d32124152a"
+    },
+    {
+      "name": "05_Survival_Construction_Site_C.ldb",
+      "sha256": "0e9772b7f737d952789435422271a1aa47602693bf046b18c70adfdc09e16eb0"
+    }
+  ],
+  "unlocated_original_mp2_inputs": [
+    "09_Upper_East_Side.ldb",
+    "10_Police_Station.ldb"
+  ],
+  "canonical_patch_checks": {
+    "forward_on_saved_original_sources": "pass",
+    "reverse_on_fixed_sources": "pass"
+  }
+}

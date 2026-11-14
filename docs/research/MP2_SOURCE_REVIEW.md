@@ -31,3 +31,10 @@ registration. They can misclassify a skipped new ID; a focused validation follow
 is recorded in TODO.md. No reader or writer was changed here. The runtime projects
 do not supply MaxED2 editor serialization, so no missing LV2 entity payload was
 inferred from similarly named runtime classes.
+
+## Prefab validation follow-up — 2026-11-14
+
+The validation gap described above is now fixed in both readers. New regression
+fixtures distinguish skipped IDs from truncated input. The implementation and
+new corpus checks are recorded in [PREFAB_VALIDATION.md](PREFAB_VALIDATION.md).
+The original source-comparison observations remain as dated evidence.

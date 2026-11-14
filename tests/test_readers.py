@@ -210,7 +210,7 @@ class ReaderTests(unittest.TestCase):
     def test_ldb2_prefab_render_flag_is_independent_of_lightmaps(self):
         def header(lightmaps, unique, midpoint):
             return (integer(0) + integer(lightmaps) + integer(0) * 8
-                    + integer(7) + integer(unique)
+                    + integer(0) + integer(unique)
                     + (b'\x16' + struct.pack('<fff', midpoint, 0, 0)) * 3)
 
         for lightmaps in (0, 1):
@@ -227,6 +227,59 @@ class ReaderTests(unittest.TestCase):
                     self.assertIs(first.collision, second.collision)
                     self.assertEqual(first.mesh is second.mesh, not unique)
                     self.assertIsNot(first.aabb, second.aabb)
+
+    @staticmethod
+    def prefab_header(prefab_id, unique=0):
+        return (integer(0) * 10 + integer(prefab_id) + integer(unique)
+                + (b'\x16' + struct.pack('<fff', 0, 0, 0)) * 3)
+
+    def test_ldb2_rejects_skipped_prefab_ids_before_payload(self):
+        for prefix, skipped in (([], 1), ([], 2147483647), ([0], 2),
+                                ([-1], 1), ([0, -2], 2)):
+            for unique in (0, 1):
+                records = b''.join(self.prefab_header(value) + integer(0) * 3
+                                   for value in prefix)
+                # No render/collision/animation payload follows the invalid ID.
+                # The sequence error must win over a missing-payload error.
+                payload = (integer(len(prefix) + 1) + records + integer(0) * 10
+                           + integer(skipped))
+                reader = MaxLDBReader2('unused')
+                with self.subTest(prefix=prefix, skipped=skipped, unique=unique):
+                    stream = io.BytesIO(payload + integer(unique))
+                    with self.assertRaisesRegex(FormatError, 'Invalid LDB2 prefab ID'):
+                        reader.parseDynamicMeshes(stream)
+                    self.assertEqual(len(payload), stream.tell())
+                    # Complete buffers were accepted by the old first-seen-ID
+                    # reader; rejection must not depend on truncated input.
+                    complete = (integer(len(prefix) + 1) + records
+                                + self.prefab_header(skipped, unique) + integer(0) * 3)
+                    with self.assertRaisesRegex(FormatError, 'Invalid LDB2 prefab ID'):
+                        MaxLDBReader2('unused').parseDynamicMeshes(io.BytesIO(complete))
+
+    def test_ldb2_sequential_prefabs_reuse_and_negative_ids(self):
+        ids = [-1, -2, 0, -9, 1, 0, 1, 2, 2]
+        registered = 0
+        records = []
+        for prefab_id in ids:
+            owns = prefab_id < 0 or prefab_id == registered
+            unique = prefab_id >= 0 and not owns
+            records.append(self.prefab_header(prefab_id, int(unique))
+                           + integer(0) * (3 if owns else 2))
+            if prefab_id >= 0 and owns:
+                registered += 1
+        payload = integer(len(ids)) + b''.join(records)
+        reader = MaxLDBReader2('unused')
+        stream = io.BytesIO(payload)
+        reader.parseDynamicMeshes(stream)
+        self.assertEqual(len(payload), stream.tell())
+        meshes = reader.ldb.getDynamicMeshes().dynamic_meshes
+        for template, instance in ((2, 5), (4, 6), (7, 8)):
+            self.assertIs(meshes[template].collision, meshes[instance].collision)
+            self.assertIsNot(meshes[template].mesh, meshes[instance].mesh)
+        self.assertIsNot(meshes[0].collision, meshes[1].collision)
+        # Registration belongs to one section read, not a previous invocation.
+        reader.parseDynamicMeshes(io.BytesIO(integer(1) + self.prefab_header(0)
+                                            + integer(0) * 3))
 
     def test_dense_weights_reordered_influences(self):
         vertex = SkinVertex(0, [4, 1, 4], [.2, .5, .3])

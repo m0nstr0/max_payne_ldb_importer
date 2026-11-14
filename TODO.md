@@ -33,12 +33,11 @@
   compressed/planar ColoRIX variants are explicitly unsupported. See
   [image evidence](docs/specification/IMAGES.MD).
 
-- [ ] Validate sequential LDB2 prefab registration before reading render/collision
-  branches. Both the Python reader and canonical C++ `Ldb2Document.cpp` currently
-  classify any unseen nonnegative ID as a new template; the MP2 loader requires
-  exactly the current template count. Add a malformed skipped-ID control and
-  preserve existing valid-corpus behavior. See
-  [prefab rules](docs/specification/MAXPAYNE2_LDB.MD#dynamic-meshes-and-prefab-sharing).
+- [x] Validate sequential LDB2 prefab registration in Python and the canonical
+  C++ reader. Skipped IDs now fail before render/collision payloads; negative IDs
+  do not register templates. Complete malformed fixtures, sequential/reused IDs
+  and unique-render flags are covered. See
+  [validation](docs/research/PREFAB_VALIDATION.md).
 - [ ] Qualify the documented MP2 normalization and scale-restoration rules against
   a Maya sampling implementation; the version-4 bool's general meaning remains
   unknown. See [playback](docs/specification/KF2.MD#mp2-animation-playback).

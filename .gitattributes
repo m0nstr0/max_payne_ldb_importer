@@ -1,0 +1,2 @@
+# Unified patches contain a single space on blank context lines.
+docs/research/patches/*.patch text eol=lf whitespace=-blank-at-eol

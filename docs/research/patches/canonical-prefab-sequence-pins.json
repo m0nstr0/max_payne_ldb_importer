@@ -1,0 +1,17 @@
+[
+  {
+    "path": "src/mp2/Ldb2Document.cpp",
+    "before_sha256": "6e7539b1ca0b3ad8cf790c9b0dc2a507345d9b40d4a9509cbca078b9c5e2c13f",
+    "after_sha256": "23e7fb8db8a2cd608da96db0cbeb2da92323196cdf4d4c47815b397ffb745d4e"
+  },
+  {
+    "path": "tests/mp2/verify_ldb2.cpp",
+    "before_sha256": "7d633de7a1a4c11fe3a19f8b728d63569f83a5604c1a8ae9717f9134e1fd9770",
+    "after_sha256": "8114a7894d32398eaf1a8bce78e0056ab5f42f20927774c9f9be24aac9beec69"
+  },
+  {
+    "path": "tests/mp2/verify_recovery.cpp",
+    "before_sha256": "b787153314dfc08e49211027684046b3ad93b641a9bbbe09d48d343ff5854d08",
+    "after_sha256": "da420f0a2fe280c27515bb0c725e6371c0336bbb38f2082bc0b9a687d389a64b"
+  }
+]
