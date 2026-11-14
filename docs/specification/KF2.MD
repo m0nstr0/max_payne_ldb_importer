@@ -399,6 +399,26 @@ is not used to choose a different payload in this reader. This does not establis
 that every possible Helper version has this layout. Light and light-animation
 payloads remain outside this description.
 
+### Helper names and runtime use
+
+The inspected original corpus contains no Helper chunks: 2899 KF2 and 195 KFS
+files, including 2058 MP2 database KF2 files and four MP2 SDK examples. All files
+match the retained hashes. The observed className set is therefore empty; this
+is different from finding a Helper with an empty class name. Other exports or
+releases may contain Helpers.
+
+MP2KF2 does not select behavior from className. If a Helper callback is set, the
+loader reads the chunk and passes it by const reference to that callback. The
+Helper data is temporary; a consumer that retains it must copy the needed data.
+Without the callback, the loader skips the chunk. Callback state can be supplied
+and restored by a caller. The inspected library has no built-in Helper class
+registry or class-specific consumer. A concrete meaning must be established in
+the external callback; it cannot be assigned from the class string alone.
+
+Names such as `TypedHelperClass` in constructed tests are not original class
+names. A mesh or animation node with a suggestive name is also not evidence of
+a Helper chunk. Preserve the Node and class bytes when such a chunk is present.
+
 ## Validation and import limits
 
 Check chunk sizes, count bounds, index domains, primitive ranges, parent names

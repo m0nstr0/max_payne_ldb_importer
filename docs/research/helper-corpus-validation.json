@@ -1,0 +1,76 @@
+{
+  "scope": "Top-level chunks and known Mesh child streams; opaque bytes are not tag-scanned",
+  "inventory_sha256": "cda0e7f5ea550b47f75cf8b504900726c7d0afe364b650a2f6e1cd742826a9a4",
+  "files_checked": 3094,
+  "counts": {
+    "mp1-database:.kf2": 834,
+    "mp1-database:.kfs": 183,
+    "mp1-sdk:.kf2": 3,
+    "mp1-sdk:.kfs": 12,
+    "mp2-database:.kf2": 2058,
+    "mp2-particle-sdk:.kf2": 4
+  },
+  "accepted_manifest_sha256": "94100e17e1aada9e31a27957d69b2eb5a24fce1d7742cd70935a061df23ea49b",
+  "helper_count": 0,
+  "classes": {},
+  "helpers": [],
+  "errors": [],
+  "run_date": "2026-11-14",
+  "independent_inspector": {
+    "files": 3094,
+    "errors": 0,
+    "opaque_chunks": 0,
+    "hash_mismatches": 0,
+    "helper_count": 0,
+    "report_sha256": "1a29e9b67f8ed81ca676228888c92de364eed6abeff896d8a03c4a4339326d1e",
+    "note": "Fresh execution; the inspector embeds its original fixed 2026-10-27 schema date. The run date above is the execution date."
+  },
+  "source_pins": [
+    {
+      "workspace_relative_path": "MP2KF2/src/loader/HelperChunk.h",
+      "sha256": "0c80cd683ea89a9a963b2112ff1849321546c57b7d9382666ef565dd6c2d0879"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/src/loader/LoaderAuxiliaryChunks.cpp",
+      "sha256": "5e7689d396ec3dff88233da7c1895630483da1c29ab137cdd794a9b46df3a7a8"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/src/loader/KF_Loader.cpp",
+      "sha256": "9249c7721a89f4d1c469fb0d8018e5e1242b006e2f9ff74f2b47776f8f9bec0c"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/src/loader/KF_LoaderCallbacks.cpp",
+      "sha256": "2dad4304ddf4c20965fbc1ec2373eea2f65e20510d272c4c69dd49b2d6bfb6e3"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/src/animation/ObjectGeometryLoading.cpp",
+      "sha256": "5ad0bf45577ad9c2e0c00b029c943d3b05f058158e56af87f1ba93279d43d0a9"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/src/animation/ObjectAnimationLoading.cpp",
+      "sha256": "3d15c3998066050494e069f6ce47c910b3ebfd4789e24a51fa65184dbb8ecac0"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/tests/LoaderControls.cpp",
+      "sha256": "bcd3cc4655d34260c7c472589e393cde0e2bc2aa015b5e6ce931b32e8b3caa2d"
+    },
+    {
+      "workspace_relative_path": "MP2KF2/research/final-source-r3-matrix/report.json",
+      "sha256": "cf83b082ce01a970c111d6a1ba3193e03e7d8d26e524e8445400bb01679c345c"
+    },
+    {
+      "workspace_relative_path": "max payne formats/tools/inspect_kf2.py",
+      "sha256": "a4aadb1fc69d4b6b7d63503f79e0143043a5d62c846f9f91b8d99da226445efd"
+    }
+  ],
+  "retained_loader_controls": {
+    "checks_per_trial": 774,
+    "digest": "295cb26e",
+    "trials": 4,
+    "new_native_execution": false
+  },
+  "synthetic_audit_tests": 4,
+  "audit_tool_sha256": "37ca07cbed38839d4b4fa24a632a56d91883ef444df83962b5d84bf7274176f0",
+  "audit_test_sha256": "26e68725d0d07bdc8a535dc5324ce6d199e8deaf20bdba949f35fc1dcd961a08",
+  "python_unit_tests": 51
+}

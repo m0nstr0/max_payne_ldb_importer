@@ -1,5 +1,19 @@
 # Importer status
 
+## 2026-11-14 — Helper census and callback contract
+
+No Helper chunks or class names occur in the hash-retained corpus of 2899 KF2
+and 195 KFS files. Both the focused audit and an independent full parser agree;
+all 3094 inputs match their hashes, with zero parse/opaque errors in the full
+parser. Four positive/bounds/opaque audit tests are included; 51 tests pass.
+
+MP2KF2 only reads Helper Node/className and dispatches a caller callback; it has
+no built-in class registry. TypedHelperClass is a synthetic test string. The
+specification now separates the corpus result, the callback contract and unknown
+external consumer semantics. Report, source pins and reproduction:
+[Helper review](research/HELPER_REVIEW.md). No reader layout, game DLL or Maya
+consumer changed. PR22 is merged; this research is a separate follow-up.
+
 ## 2026-11-14 — sequential LDB2 prefab validation
 
 Both the Python and canonical C++ readers now reject a skipped nonnegative

@@ -41,3 +41,10 @@
 - [ ] Qualify the documented MP2 normalization and scale-restoration rules against
   a Maya sampling implementation; the version-4 bool's general meaning remains
   unknown. See [playback](docs/specification/KF2.MD#mp2-animation-playback).
+
+- [ ] Establish a Helper class-role mapping only when an authentic Helper-bearing
+  asset is available: retain its hash, run `tools/audit_helpers.py`, then trace
+  the external Helper callback. The current 3094-file corpus has zero Helpers;
+  MP2KF2 itself only reads and dispatches them. This is unknown consumer semantics,
+  separate from the already-listed missing Maya helper consumer. See
+  [Helper review](docs/research/HELPER_REVIEW.md).
