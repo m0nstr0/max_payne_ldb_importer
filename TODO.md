@@ -4,7 +4,8 @@
   support: legacy LVL edge/UV branches, older LV2 document/entity profiles and
   the exact version-2 selection collection. These are unknown or incomplete
   layouts, distinct from the confirmed current profiles. Keep unsupported
-  light/Helper payloads opaque until their schemas are established; see
+  light payloads opaque until their schemas are established; the MP2 Helper
+  reader is now documented, but its Maya consumer is still missing. See
   [format index](docs/specification/INDEX.MD).
 
 - [ ] Qualify real Maya 2022/2023/2024 imports (mesh/material, skeleton, SKDv0/v1,
@@ -31,3 +32,12 @@
   Current SCX coverage is native-static MP1/MP2 plus constructed fixtures;
   compressed/planar ColoRIX variants are explicitly unsupported. See
   [image evidence](docs/specification/IMAGES.MD).
+
+- [x] Validate sequential LDB2 prefab registration in Python and the canonical
+  C++ reader. Skipped IDs now fail before render/collision payloads; negative IDs
+  do not register templates. Complete malformed fixtures, sequential/reused IDs
+  and unique-render flags are covered. See
+  [validation](docs/research/PREFAB_VALIDATION.md).
+- [ ] Qualify the documented MP2 normalization and scale-restoration rules against
+  a Maya sampling implementation; the version-4 bool's general meaning remains
+  unknown. See [playback](docs/specification/KF2.MD#mp2-animation-playback).

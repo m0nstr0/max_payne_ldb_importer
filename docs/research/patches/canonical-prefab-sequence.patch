@@ -1,0 +1,121 @@
+--- a/src/mp2/Ldb2Document.cpp
++++ b/src/mp2/Ldb2Document.cpp
+@@ -1,7 +1,6 @@
+ #include "Ldb2Document.hpp"
+ #include <algorithm>
+ #include <limits>
+-#include <set>
+ #include <stdexcept>
+ #include <utility>
+ 
+@@ -309,7 +308,7 @@
+     Node dynamicMeshes() {
+         Node group = sequence("dynamicMeshes");
+         const auto size = count(group, 32);
+-        std::set<std::int32_t> prefabIds;
++        std::uint32_t registeredPrefabCount = 0;
+         for (std::uint32_t i = 0; i < size; ++i) {
+             Node item = record(i);
+             scalar(item, "fsmId");
+@@ -317,15 +316,21 @@
+             fields(item, {"pointLightsAffect", "continuousUpdate", "bulletCollision", "characterCollision",
+                 "blockExplosions", "noDecals", "elevator", "physicalMaterial"});
+             const auto prefabId = scalar(item, "prefabId").asSigned();
++            if (prefabId >= 0 && static_cast<std::uint64_t>(prefabId) > registeredPrefabCount)
++                throw std::runtime_error("Invalid LDB2 prefab ID " + std::to_string(prefabId) +
++                    ": next registered ID is " + std::to_string(registeredPrefabCount));
+             // Native X_LevelDynamicMesh::construct (v34) branches on this final
+             // bool, not on useLightmaps. Its original authoring-property name
+             // is unknown. True supplies a unique render mesh for an instance;
+             // the collision body is still cloned from the prefab template.
+             const bool uniqueRender = scalar(item, "unknownPrefabRenderFlag").asBool();
+             fields(item, {"boundingBoxMin", "boundingBoxMax", "meshMidpoint"});
+-            const bool ownsPrefab = prefabId < 0 || prefabIds.insert(prefabId).second;
++            const bool ownsPrefab = prefabId < 0 || static_cast<std::uint64_t>(prefabId) == registeredPrefabCount;
+             if (ownsPrefab || uniqueRender) item.children.push_back(renderMeshes());
+-            if (ownsPrefab) item.children.push_back(collisions());
++            if (ownsPrefab) {
++                item.children.push_back(collisions());
++                if (prefabId >= 0) ++registeredPrefabCount;
++            }
+             item.children.push_back(animations());
+             group.children.push_back(finish(std::move(item)));
+         }
+--- a/tests/mp2/verify_ldb2.cpp
++++ b/tests/mp2/verify_ldb2.cpp
+@@ -84,6 +84,56 @@
+     require(parsed.field("record2").field("useLightmaps").asBool(), "Lighting flag was changed");
+     rejects([&] { parsed.field("record2").field("renderMeshes"); }, "Lighting flag incorrectly controls render read");
+     rejects([&] { parsed.field("record4").field("collisionShapes"); }, "Unique render instance incorrectly owns collision");
++}
++
++Ldb2Document prefabSequence(const std::vector<int>& ids, bool uniqueRender = false) {
++    auto document = Ldb2Document::read(emptyLevel());
++    auto& group = document.root().field("dynamicMeshes");
++    group.field("count").setSigned(static_cast<std::int32_t>(ids.size()));
++    int registered = 0;
++    for (std::size_t i = 0; i < ids.size(); ++i) {
++        auto item = ArchiveNode::sequence("record" + std::to_string(i));
++        item.children.push_back(ArchiveNode::signedValue("fsmId", 0));
++        for (const auto name : {"useLightmaps", "pointLightsAffect", "continuousUpdate", "bulletCollision",
++                "characterCollision", "blockExplosions", "noDecals", "elevator"})
++            item.children.push_back(ArchiveNode::boolValue(name, false));
++        item.children.push_back(ArchiveNode::signedValue("physicalMaterial", -1));
++        item.children.push_back(ArchiveNode::signedValue("prefabId", ids[i]));
++        item.children.push_back(ArchiveNode::boolValue("unknownPrefabRenderFlag", uniqueRender));
++        for (const auto name : {"boundingBoxMin", "boundingBoxMax", "meshMidpoint"})
++            item.children.push_back(vector3(name));
++        const bool owns = ids[i] < 0 || ids[i] == registered;
++        if (owns || uniqueRender) item.children.push_back(emptyRecords("renderMeshes"));
++        if (owns) item.children.push_back(emptyRecords("collisionShapes"));
++        if (ids[i] >= 0 && owns) ++registered;
++        item.children.push_back(emptyRecords("animations"));
++        group.children.push_back(std::move(item));
++    }
++    return document;
++}
++
++void prefabSequenceTests() {
++    for (const bool uniqueRender : {false, true}) {
++        auto valid = prefabSequence({-1, -2, 0, -9, 1, 0, 1, 2, 2}, uniqueRender);
++        const auto bytes = valid.write();
++        require(Ldb2Document::read(bytes).write() == bytes, "Sequential prefab roundtrip changed bytes");
++        // All mutations retain complete payloads: the old first-seen-ID reader
++        // accepted them. Negative IDs must not increment the registered count.
++        for (const auto& test : std::vector<std::pair<std::vector<int>, int>>{
++                {{0}, 1}, {{0}, 2147483647}, {{0, 1}, 2}, {{-1, 0}, 1}, {{0, -2, 1}, 2}}) {
++            auto invalid = prefabSequence(test.first, uniqueRender);
++            auto& group = invalid.root().field("dynamicMeshes");
++            group.children.back().field("prefabId").setSigned(test.second);
++            const auto malformed = ArchiveWriter::write(invalid.root());
++            bool rejected = false;
++            try { Ldb2Document::read(malformed); }
++            catch (const std::runtime_error& error) {
++                rejected = std::string(error.what()).find("Invalid LDB2 prefab ID") != std::string::npos;
++            }
++            require(rejected, "Skipped prefab ID was not rejected at registration");
++            rejects([&] { invalid.write(); }, "Writer accepted a skipped prefab ID");
++        }
++    }
+ }
+ 
+ ArchiveNode rawFloats(const char* name, std::initializer_list<float> values) {
+@@ -275,6 +325,7 @@
+     try {
+         syntheticTests();
+         prefabTests();
++        prefabSequenceTests();
+         animationGraphTests();
+         packedVolumeCellTests();
+         std::vector<std::filesystem::path> paths;
+--- a/tests/mp2/verify_recovery.cpp
++++ b/tests/mp2/verify_recovery.cpp
+@@ -262,7 +262,7 @@
+     auto source=syntheticSource();
+     auto& runtime=source.root().field("dynamicMeshes").field("record0");
+     runtime.field("meshMidpoint")=vector3("meshMidpoint",.75f,-1.375f,.03125f);
+-    runtime.field("prefabId").setSigned(42);
++    runtime.field("prefabId").setSigned(0);
+     auto shape=N::sequence("record0");
+     shape.children={N::unsignedValue("vertexCount",4),N::unsignedValue("triangleCount",4),
+         rawFloats("positions",{0,0,0,1,0,0,0,1,0,0,0,1}),

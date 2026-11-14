@@ -14,6 +14,7 @@ behavior. Read the shared notation before implementing a reader or writer.
 | [KF2](KF2.MD) | Models, materials, camera and animation data | Supported components only |
 | [KFS](KFS.MD) | KF2-family skin geometry and related data | Uses the KF2 reader |
 | [SKD](SKD.MD) | Bone weights, versions 0 and 1 | Matching mesh and skeleton required |
+| [MP2 runtime state](MAXPAYNE2_RUNTIME_STATE.MD) | ObjectBase and Exit state chunks; not a full savegame schema | Format reference; no Maya reader |
 | [Images](IMAGES.MD) | PCX, SCX/RIX3 and TGA output | Dependency-free conversion |
 
 [Revision notes](REVIEW_CORRECTIONS.MD) summarize the corrected descriptions.

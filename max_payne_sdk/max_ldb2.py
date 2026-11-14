@@ -297,7 +297,7 @@ class MaxLDBReader2(MaxLDBReaderInterface):
         return animations
 
     def parseDynamicMeshes(self, f):
-        perfab_master = {}
+        prefab_templates = []
         for _ in range(read_count(f)):
             fsm_id = parseType(f)
             use_light_maps = parseType(f)
@@ -309,7 +309,11 @@ class MaxLDBReader2(MaxLDBReaderInterface):
             no_decals = parseType(f)
             elevator = parseType(f)
             physical_material = parseType(f)
-            perfab_id = parseType(f)
+            prefab_id = parseType(f)
+            if prefab_id > len(prefab_templates):
+                raise FormatError(
+                    "Invalid LDB2 prefab ID %d: next registered ID is %d"
+                    % (prefab_id, len(prefab_templates)))
             share_collision = parseType(f)
             aabb = AABB(parseType(f), parseType(f), parseType(f))
             mesh: StaticMeshContainer = None
@@ -317,13 +321,13 @@ class MaxLDBReader2(MaxLDBReaderInterface):
             # v34's final flag supplies a unique render mesh on repeated
             # prefabs. It does not control collision sharing. Keep the public
             # share_collision field name for compatibility with old clients.
-            if perfab_id < 0 or perfab_id not in perfab_master:
+            if prefab_id < 0 or prefab_id == len(prefab_templates):
                 mesh = self.parseRoomStaticMesh(f)
                 collision_shapes = self.parseRoomCollisions(f)
-                if perfab_id >= 0:
-                    perfab_master[perfab_id] = [mesh, collision_shapes, aabb]
+                if prefab_id >= 0:
+                    prefab_templates.append((mesh, collision_shapes))
             else:
-                template_mesh, collision_shapes, _ = perfab_master[perfab_id]
+                template_mesh, collision_shapes = prefab_templates[prefab_id]
                 mesh = self.parseRoomStaticMesh(f) if share_collision else template_mesh
                 # Bounds belong to this instance's serialized header.
 
@@ -338,7 +342,7 @@ class MaxLDBReader2(MaxLDBReaderInterface):
                 no_decals,
                 elevator,
                 physical_material,
-                perfab_id,
+                prefab_id,
                 share_collision,
                 aabb,
                 mesh,

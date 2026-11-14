@@ -1,5 +1,36 @@
 # Importer status
 
+## 2026-11-14 — sequential LDB2 prefab validation
+
+Both the Python and canonical C++ readers now reject a skipped nonnegative
+prefab ID before reading its flags or geometry. Negative IDs remain unregistered;
+sequential registration, template reuse and unique-render behavior are preserved.
+47 Python tests and compileall pass. Three focused C++ tests pass, and all
+28 retained original MP2 files pass C++ read/write byte identity and isolated
+float edits. The old readers fail the new skipped-ID regression controls.
+
+The C++ code belongs to the separate formats project. Its exact tested source
+and test delta, input/output hashes and validation details are available in
+[the validation report](research/PREFAB_VALIDATION.md). No game DLL or on-disk
+layout changed. The earlier implementation-gap statement below is superseded.
+Python corpus replay:56/56 original LDB files (28MP1/28MP2),0 failures;
+all source hashes are unchanged.
+
+## 2026-11-14 — MP2 source comparison
+
+KF2 now documents Helper, MP2 track conversion, coefficient playback,
+normalization modes and scale restoration. LDB2 adds selected revision gates,
+sequential prefab registration, volume decoding/sampling and dynamic-animation
+translation distance units. Runtime ObjectBase/Exit state has a separate page;
+no LDB/LV2 fields were inferred from state chunks or runtime class names.
+
+Source hashes and retained finite-control boundaries are in
+[the source review](research/MP2_SOURCE_REVIEW.md). No implementation, binary
+layout, game DLL or Maya behavior changed. A skipped-prefab-ID validation gap
+in both readers is recorded in TODO; old-revision readers remain unsupported.
+Documentation checks cover links/anchors, fences, plain-English pages, excluded
+references and whitespace. This follows merged PR21 on review_and_refactoring.
+
 ## 2026-11-09 — specification refresh
 
 All 11 specification pages now use consistent, plain English. The former empty
